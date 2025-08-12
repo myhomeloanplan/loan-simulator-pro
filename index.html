@@ -381,13 +381,28 @@ input[type="radio"] + label {
     border-top-color: rgba(255,255,255,0.08);
   }
 }    
+/* Proバッジ */
+.badge-pro {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: #fff;
+  background: #0c7e72; /* あなたのテーマカラー */
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
   </style>
 </head>
 
 <body onload="generateRateInputs()">
   <div class="title-wrap">
     <div class="subtitle">半年ごとに金利を変更できる</div>
-    <h1 class="title">住宅ローンシミュレーター</h1>
+    <h1 class="title">
+  住宅ローンシミュレーター <span class="badge-pro">Pro</span>
+</h1>
   </div>
 
   <!-- =============== 条件入力カード =============== -->
