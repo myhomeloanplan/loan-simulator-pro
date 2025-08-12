@@ -363,6 +363,24 @@ input[type="radio"] + label {
   cursor: pointer;
 }
 
+/* ---------- フッター ---------- */
+.site-footer {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 40px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  background: #f9f9f9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .site-footer {
+    color: #aaa;
+    background: #1c1c1c;
+    border-top-color: rgba(255,255,255,0.08);
+  }
+}    
   </style>
 </head>
 
@@ -1058,5 +1076,9 @@ function applyRatePreset(){
   setHalfYearRates(halfRates);
 }
 </script>
+   <!-- ===== フッター（コピーライト） ===== -->
+  <footer class="site-footer">
+    © 2025 MyHomeLoanPlan. All Rights Reserved.
+  </footer>
 </body>
 </html>
