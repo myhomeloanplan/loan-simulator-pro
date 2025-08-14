@@ -486,7 +486,7 @@ input[type="radio"] + label {
     <section class="summary-panel" aria-label="シミュレーション結果サマリー">
       <div class="summary-grid">
         <div class="summary-item primary">
-          <div class="summary-label">総返済額（諸費用含む）</div>
+          <div class="summary-label">総支払額（諸費用含む）</div>
           <div class="summary-value" id="total-repay">—</div>
         </div>
         <div class="summary-item secondary">
@@ -830,7 +830,7 @@ function displayResult(data,totalP,totalI,payments){
 
   const legacy = document.getElementById('result');
   if(legacy){
-    legacy.textContent = `🏁 総返済額（諸費用含む）: ${totalRepay.toLocaleString()} 円\n📊 総利息: ${interestRounded.toLocaleString()} 円`;
+    legacy.textContent = `🏁 総支払額（諸費用含む）: ${totalRepay.toLocaleString()} 円\n📊 総利息: ${interestRounded.toLocaleString()} 円`;
   }
 
   const show=document.getElementById('toggle-table').checked;
@@ -957,7 +957,7 @@ function renderSavedSummaries(){
         </div>
       </div>
       <div class="saved-kpis">
-        <div class="row"><span>総返済額（諸費用含む）</span><strong>${s.totalRepay.toLocaleString()} 円</strong></div>
+        <div class="row"><span>総支払額（諸費用含む）</span><strong>${s.totalRepay.toLocaleString()} 円</strong></div>
         <div class="row"><span>総利息</span><strong>${s.totalInterest.toLocaleString()} 円</strong></div>
         <div class="row"><span>初月</span><strong>${s.first.toLocaleString()} 円</strong></div>
         <div class="row"><span>平均</span><strong>${s.avg.toLocaleString()} 円</strong></div>
@@ -981,7 +981,7 @@ function exportSavedSummaries(){
   if(!savedSummaries.length){ alert('保存された結果がありません。'); return; }
   if(typeof XLSX === 'undefined'){ alert('XLSXライブラリが読み込まれていません。'); return; }
   const rows = savedSummaries.map(s => ({
-    シナリオ名: s.label, 保存日時: s.savedAt, 総返済額: s.totalRepay, 総利息: s.totalInterest,
+    シナリオ名: s.label, 保存日時: s.savedAt, 総支払額: s.totalRepay, 総利息: s.totalInterest,
     初月: s.first, 平均: s.avg, 最大: s.max
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
