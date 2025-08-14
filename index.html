@@ -782,23 +782,44 @@ function simulate(){
   const result=[], payments=[]; 
   let totalP=0,totalI=0;
 
-  for(let m=0;m<months;m++){
-    const r=(rates[Math.floor(m/6)]||0)/12, remain=months-m;
-    let interest=balance*r, principal, out;
-    if(repaymentType==='principalAndInterestEqual'){
-      out = r>0 ? balance*r*Math.pow(1+r,remain)/(Math.pow(1+r,remain)-1) : balance/remain;
-      interest=balance*r; principal=out-interest;
-    }else{
-      principal=amount/months; interest=balance*r; out=principal+interest;
-    }
-    balance-=principal; if(balance<0) balance=0; 
-    totalP+=principal; totalI+=interest; 
-    payments.push(out);
+  for(let m=0; m<months; m++){
+  // 元の行
+  // const r = (rates[Math.floor(m/6)]||0)/12;
 
-    result.push({ 
-      月:m+1, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round()
-    });
+  // 修正版：月利を6桁（0.000000）に丸めてから使う
+  const annualRate = rates[Math.floor(m/6)] || 0; // 年利（例: 0.01）
+  const r = Math.round((annualRate / 12) * 1e6) / 1e6; // 6桁で丸めた月利
+
+  const remain = months - m;
+  let interest = balance * r, principal, out;
+
+  if(repaymentType === 'principalAndInterestEqual'){
+    out = r > 0 
+      ? balance * r * Math.pow(1 + r, remain) / (Math.pow(1 + r, remain) - 1)
+      : balance / remain;
+    interest = balance * r;
+    principal = out - interest;
+  } else {
+    principal = amount / months;
+    interest = balance * r;
+    out = principal + interest;
   }
+
+  balance -= principal;
+  if(balance < 0) balance = 0;
+
+  totalP += principal;
+  totalI += interest;
+  payments.push(out);
+
+  result.push({
+    月: m + 1,
+    元金: Math.round(principal),
+    利息: Math.round(interest),
+    残高: Math.round(balance),
+    支払額: Math.round(out)
+  });
+}
 
   lastSimData=result; 
 lastTotals = { totalP, totalI, payments };
