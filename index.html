@@ -407,85 +407,75 @@ border-top-color: rgba(255,255,255,0.08);
 
 <!-- =============== 条件入力カード =============== -->
 <div class="card">
-  <div class="panel-title"><span class="chip">1</span>条件</div>
+<div class="panel-title"><span class="chip">1</span>条件</div>
 
-  <!-- 借入額 -->
-  <div class="section-title">借入額（万円）</div>
-  <input type="text" id="amount" value="3000" oninput="syncAmountFromText()" />
-  <input type="range" id="amount-range" min="1000" max="10000" step="10" value="3000" oninput="syncAmountFromRange()" />
-  <div class="range-labels"><span>1,000万円</span><span>2億円</span></div>
+<!-- 借入額 -->
+<div class="section-title">借入額（万円）</div>
+<input type="text" id="amount" value="3000" oninput="syncAmountFromText()" />
+<input type="range" id="amount-range" min="1000" max="10000" step="10" value="3000" oninput="syncAmountFromRange()" />
+<div class="range-labels"><span>1,000万円</span><span>2億円</span></div>
 
-  <!-- 返済期間 -->
-  <div class="section-title">返済期間（年）</div>
-  <input type="number" id="years" value="35" oninput="syncYearsFromInput()" />
-  <input type="range" id="years-range" min="1" max="50" step="1" value="35" oninput="syncYearsFromRange()" />
-  <div class="range-labels"><span>1年</span><span>50年</span></div>
+<!-- 返済期間 -->
+<div class="section-title">返済期間（年）</div>
+<input type="number" id="years" value="35" oninput="syncYearsFromInput()" />
+<input type="range" id="years-range" min="1" max="50" step="1" value="35" oninput="syncYearsFromRange()" />
+<div class="range-labels"><span>1年</span><span>50年</span></div>
 
-  <!-- 返済方式 -->
-  <div class="section-title">返済方式</div>
-  <div class="inline-group">
-    <label><input type="radio" name="repaymentType" value="principalAndInterestEqual" checked /> 元利均等返済</label>
-    <label><input type="radio" name="repaymentType" value="principalEqual" /> 元金均等返済</label>
-  </div>
+<!-- 返済方式 -->
+<div class="section-title">返済方式</div>
+<div class="inline-group">
+<label><input type="radio" name="repaymentType" value="principalAndInterestEqual" checked /> 元利均等返済</label>
+<label><input type="radio" name="repaymentType" value="principalEqual" /> 元金均等返済</label>
+</div>
 
-  <!-- 諸費用 -->
-  <div class="section-title">諸費用（万円・現金払い）</div>
-  <input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
+<!-- 諸費用 -->
+<div class="section-title">諸費用（万円・現金払い）</div>
+<input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
 
-  <!-- 金利 -->
-  <div class="section-title">金利（％）</div>
+<!-- 金利 -->
+<div class="section-title">金利（％）</div>
 
-  <!-- 金利一括入力ツールバー -->
-  <h3 class="rate-section-title">一括設定</h3>
-  <div class="rate-toolbar">
-    <div class="rate-field">
-      <button type="button" class="icon-btn" aria-label="金利を0.05下げる" onclick="adjustRate(-0.05)">−</button>
-      <input type="number" id="bulkRateUnified" class="rate-input bulk-rate-input" step="0.01" value="1.00" />
-      <span class="rate-suffix">%</span>
-      <button type="button" class="icon-btn" aria-label="金利を0.05上げる" onclick="adjustRate(0.05)">＋</button>
-    </div>
-    <div class="scope-field"><select id="applyScope"></select></div>
-    <button type="button" class="btn btn-compact" onclick="applyRateUnified()">適用</button>
-  </div>
+<!-- 金利一括入力ツールバー -->
+<h3 class="rate-section-title">一括設定</h3>
+<div class="rate-toolbar">
+<div class="rate-field">
+<button type="button" class="icon-btn" aria-label="金利を0.05下げる" onclick="adjustRate(-0.05)">−</button>
+<input type="number" id="bulkRateUnified" class="rate-input bulk-rate-input" step="0.01" value="1.00" />
+<span class="rate-suffix">%</span>
+<button type="button" class="icon-btn" aria-label="金利を0.05上げる" onclick="adjustRate(0.05)">＋</button>
+</div>
+<div class="scope-field"><select id="applyScope"></select></div>
+<button type="button" class="btn btn-compact" onclick="applyRateUnified()">適用</button>
+</div>
 
-  <!-- ▼ 金利プリセット（ビルトイン + マイプリセット） -->
-  <h3 class="rate-section-title preset-title">プリセットから設定</h3>
-  <div class="rate-presets">
-    <div class="scope-field" style="width:100%;">
-      <select id="ratePreset">
-        <option value="">金利プリセットを選択</option>
-        <optgroup label="標準プリセット">
-          <option value="flat10">横ばい 1.00%</option>
-          <option value="patternA">低金利と高金利を繰り返す（最大3.0%）</option>
-          <option value="patternB">低金利と高金利を繰り返す（最大5.0%）</option>
-          <option value="stepUp025">段階的上昇（毎年+0.25% 上限3%）</option>
-          <option value="earlyShock">早期ショック（2年で+1.50% → 横ばい）</option>
-          <option value="ladderUp">階段上昇（5年ごと+0.5%）</option>
-        </optgroup>
-        <optgroup id="myPresetGroup" label="マイプリセット（保存分）"></optgroup>
-      </select>
-    </div>
-    <button type="button" class="btn btn-compact" onclick="applyRatePreset()">適用</button>
-  </div>
+<!-- ▼ 金利プリセット（プレビュー無し） -->
+<h3 class="rate-section-title preset-title">プリセットから設定</h3>
+<div class="rate-presets">
+<div class="scope-field">
+<select id="ratePreset">
+<option value="">金利プリセットを選択</option>
+<option value="flat10">横ばい 1.00%</option>
+<option value="patternA">低金利と高金利を繰り返す（最大3.0%）</option>
+<option value="patternB">低金利と高金利を繰り返す（最大5.0%）</option>
+<option value="stepUp025">段階的上昇（毎年+0.25% 上限3%）</option>
+<option value="earlyShock">早期ショック（2年で+1.50% → 横ばい）</option>
+<option value="ladderUp">階段上昇（5年ごと+0.5%）</option>
+</select>
+</div>
+<button type="button" class="btn btn-compact" onclick="applyRatePreset()">適用</button>
+</div>
 
-  <!-- ▼ マイプリセットの保存・削除 -->
-  <div class="my-presets-row">
-    <input type="text" id="myPresetName" placeholder="マイプリセット名（例：将来ショック＋横ばい）">
-    <button type="button" class="btn btn-compact" onclick="saveAsMyPreset()">📝 現在の金利を保存</button>
-    <button type="button" class="btn btn-compact" onclick="deleteSelectedMyPreset()">🗑️ 選択プリセットを削除</button>
-  </div>
+<!-- 半年ごとの手入力欄（動的生成） -->
+<div id="rate-inputs"></div>
 
-  <!-- 半年ごとの手入力欄（動的生成） -->
-  <div id="rate-inputs"></div>
+<!-- ドラッグ編集（半年ごと） -->
+<div class="section-title">📈 ドラッグで金利編集（半年ごと）</div>
+<p class="note">点を上下にドラッグするだけで変更できます。変更したポイント以降は同じ金利となります。</p>
+<div class="chart-wrap"><canvas id="rateChart"></canvas></div>
 
-  <!-- ドラッグ編集（半年ごと） -->
-  <div class="section-title">📈 ドラッグで金利編集（半年ごと）</div>
-  <p class="note">点を上下にドラッグするだけで変更できます。変更したポイント以降は同じ金利となります。</p>
-  <div class="chart-wrap"><canvas id="rateChart"></canvas></div>
-
-  <div class="actions">
-    <button class="btn btn-primary" onclick="simulate()">シミュレーションする</button>
-  </div>
+<div class="actions">
+<button class="btn btn-primary" onclick="simulate()">シミュレーションする</button>
+</div>
 </div>
 
 <!-- =============== 結果表示カード =============== -->
