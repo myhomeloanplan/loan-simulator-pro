@@ -373,6 +373,33 @@ th{ background:#f2fbfc; color:#0b4a4f; font-weight:800;}
 </div>
 
 <script>
+// ======= セーフガード（外部CDNが読めない時でも落ちない） =======
+window.__SAFE__ = {
+  hasChart: !!window.Chart,
+  hasDrag: !!(window.Chart && Chart.registry && Chart.registry.getPlugin && Chart.registry.getPlugin('dragdata')),
+  hasXLSX: !!window.XLSX
+};
+// XLSX が無ければダミーを用意（呼ばれてもアラートに退避）
+if(!__SAFE__.hasXLSX){
+  window.XLSX = {
+    utils:{ json_to_sheet(){}, book_new(){}, book_append_sheet(){} },
+    writeFile(){ alert('XLSXが読み込まれていません（オフライン？）。オンラインでお試しください。'); }
+  };
+}
+// 画面下にエラーを出して原因を掴みやすく
+(function(){
+  const origOnError = window.onerror;
+  window.onerror = function(msg, src, line, col){
+    try{
+      const b = document.createElement('div');
+      b.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;background:#ffefef;color:#7a1026;border:1px solid #ffd0d8;border-radius:10px;padding:10px;z-index:99999;font-family:system-ui;';
+      b.textContent = 'エラー: ' + msg + (src ? ` (${src}:${line}:${col||0})` : '');
+      document.body.appendChild(b);
+    }catch(_){}
+    if(typeof origOnError === 'function') origOnError.apply(this, arguments);
+  };
+})();
+
 /* ---------------- グローバル状態 ---------------- */
 let lastSimData = [], rateChartInstance = null, paymentChart = null, stackedChart = null;
 let lastTotals = null;
@@ -430,7 +457,8 @@ function generateRateInputs(){
 function updateRateChartFromInputs(){
   const inputs=[...document.querySelectorAll('.half-rate-input')];
   const rates=inputs.map(el=>parseFloat(el.value)||0);
-  if(rateChartInstance){
+
+  if(rateChartInstance && window.__SAFE__?.hasChart){
     rateChartInstance.data.labels=rates.map((_,i)=>`${Math.floor(i/2)+1}年目`);
     rateChartInstance.data.datasets[0].data=rates;
     const dataMax = Math.max(...rates, 0);
@@ -471,11 +499,22 @@ function applyRateUnified(){
 function drawRateChart(){
   const inputs=[...document.querySelectorAll('.half-rate-input')];
   const rates=inputs.map(el=>parseFloat(el.value)||0);
+
+  // Chart.js が無ければスキップ（他機能は継続）
+  if(!window.__SAFE__?.hasChart){ return; }
+
   const dataMax = Math.max(...rates, 0);
   const yMax = Math.max(5, Math.ceil(dataMax / 0.5) * 0.5);
 
   const ctx=document.getElementById('rateChart').getContext('2d');
   if(rateChartInstance) rateChartInstance.destroy();
+
+  // dragdata が無い環境でも落ちないように
+  let extraPlugins = [];
+  try{
+    const drag = Chart.registry.getPlugin('dragdata');
+    if(drag) extraPlugins = [drag];
+  }catch(e){}
 
   rateChartInstance=new Chart(ctx,{
     type:'line',
@@ -500,7 +539,8 @@ function drawRateChart(){
         tooltip:{ backgroundColor:'#0e2a47', titleColor:'#fff', bodyColor:'#fff',
           callbacks:{ title:(items)=>{ const i=items[0].dataIndex; return `${Math.floor(i/2)+1}年目（${i%2===0?'前半':'後半'}）`;},
                       label:(ctx)=>`金利: ${Number(ctx.parsed.y).toFixed(2)}%` } },
-        dragData:{
+        // dragdata がある環境でのみ有効化
+        dragData: window.__SAFE__?.hasDrag ? {
           round:2, showTooltip:true, dragX:false, dragY:true,
           onDrag:(e,di,idx,val)=>{ const snapped=Math.round(val/0.05)*0.05; return Math.max(0,Math.min(6,snapped)); },
           onDragStart:(e)=>{ if(e&&e.native&&e.native.preventDefault) e.native.preventDefault(); document.body.style.touchAction='none'; },
@@ -517,10 +557,10 @@ function drawRateChart(){
             rateChartInstance.data.datasets[0].data=newRates;
             rateChartInstance.update();
           }
-        }
+        } : undefined
       }
     },
-    plugins:[Chart.registry.getPlugin('dragdata')]
+    plugins: extraPlugins
   });
 }
 
@@ -599,6 +639,9 @@ function displayResult(data,totalP,totalI,payments){
 
 /* ---------------- グラフ描画（支払額/内訳） ---------------- */
 function drawCharts(data){
+  // Chart.js が無ければグラフは描かず終了（他機能は動く）
+  if(!window.__SAFE__?.hasChart){ return; }
+
   const labels=data.map(d=>d['月']), principal=data.map(d=>d['元金']), interest=data.map(d=>d['利息']), payment=data.map(d=>d['支払額']);
   if(paymentChart) paymentChart.destroy(); if(stackedChart) stackedChart.destroy();
 
@@ -896,7 +939,6 @@ function applyRatePreset(){
 
 /* ===== 初期化 ===== */
 document.addEventListener('DOMContentLoaded', () => {
-  // <body onload="generateRateInputs()"> で金利欄は生成済みの場合あり。ここではマイプリセットのリストだけ再構築。
   rebuildMyPresetOptions();
 });
 </script>
