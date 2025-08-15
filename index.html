@@ -393,7 +393,15 @@ border-top-color: rgba(255,255,255,0.08);
   border-radius: 6px;
   vertical-align: middle;
 }
-
+/* マイプリセット行（横並び） */
+.my-presets-row{
+  display:grid; grid-template-columns: 1fr auto auto;
+  gap:8px; align-items:center; margin-top:8px;
+}
+@media (max-width:640px){
+  .my-presets-row{ grid-template-columns: 1fr; }
+}
+  
 </style>
 </head>
 
@@ -448,21 +456,33 @@ border-top-color: rgba(255,255,255,0.08);
 <button type="button" class="btn btn-compact" onclick="applyRateUnified()">適用</button>
 </div>
 
-<!-- ▼ 金利プリセット（プレビュー無し） -->
+<!-- ▼ 金利プリセット（ビルトイン + マイプリセット） -->
 <h3 class="rate-section-title preset-title">プリセットから設定</h3>
 <div class="rate-presets">
-<div class="scope-field">
-<select id="ratePreset">
-<option value="">金利プリセットを選択</option>
-<option value="flat10">横ばい 1.00%</option>
-<option value="patternA">低金利と高金利を繰り返す（最大3.0%）</option>
-<option value="patternB">低金利と高金利を繰り返す（最大5.0%）</option>
-<option value="stepUp025">段階的上昇（毎年+0.25% 上限3%）</option>
-<option value="earlyShock">早期ショック（2年で+1.50% → 横ばい）</option>
-<option value="ladderUp">階段上昇（5年ごと+0.5%）</option>
-</select>
+  <div class="scope-field" style="width:100%;">
+    <select id="ratePreset">
+      <option value="">金利プリセットを選択</option>
+      <optgroup label="標準プリセット">
+        <option value="flat10">横ばい 1.00%</option>
+        <option value="patternA">低金利と高金利を繰り返す（最大3.0%）</option>
+        <option value="patternB">低金利と高金利を繰り返す（最大5.0%）</option>
+        <option value="stepUp025">段階的上昇（毎年+0.25% 上限3%）</option>
+        <option value="earlyShock">早期ショック（2年で+1.50% → 横ばい）</option>
+        <option value="ladderUp">階段上昇（5年ごと+0.5%）</option>
+      </optgroup>
+      <optgroup id="myPresetGroup" label="マイプリセット（保存分）">
+        <!-- ここに動的に追加 -->
+      </optgroup>
+    </select>
+  </div>
+  <button type="button" class="btn btn-compact" onclick="applyRatePreset()">適用</button>
 </div>
-<button type="button" class="btn btn-compact" onclick="applyRatePreset()">適用</button>
+
+  <!-- ▼ マイプリセットの保存・削除 -->
+<div class="my-presets-row">
+  <input type="text" id="myPresetName" placeholder="マイプリセット名（例：将来ショック＋横ばい）">
+  <button type="button" class="btn btn-compact" onclick="saveAsMyPreset()">📝 現在の金利を保存</button>
+  <button type="button" class="btn btn-compact" onclick="deleteSelectedMyPreset()">🗑️ 選択プリセットを削除</button>
 </div>
 
 <!-- 半年ごとの手入力欄（動的生成） -->
@@ -550,7 +570,17 @@ let simTimer = null;   // ← 追加：手入力時のデバウンス用タイ�
 
 /* ---------------- ユーティリティ ---------------- */
 function parseAmount(v){ return parseFloat(v.replace(/,/g,''))*10000; }
+/* ========= localStorage 安全ラッパー ========= */
+function storageAvailable() {
+  try { const x='__storage_test__'; localStorage.setItem(x,x); localStorage.removeItem(x); return true; }
+  catch(e){ return false; }
+}
+const STORE = storageAvailable()
+  ? localStorage
+  : { __mem:{}, getItem(k){ return Object.prototype.hasOwnProperty.call(this.__mem,k) ? this.__mem[k] : null; },
+      setItem(k,v){ this.__mem[k] = String(v); }, removeItem(k){ delete this.__mem[k]; } };
 
+const MY_PRESET_KEY = 'loan_my_presets_v1';
 /* ---------------- ユーティリティ：デバウンス実行 ---------------- */
 function triggerSimulateDebounced(ms=250){
 if(simTimer) clearTimeout(simTimer);
@@ -1059,37 +1089,133 @@ const PRESET_HALF_RATES_PATTERN_B = [
 ];  
 /* ========= プリセット適用 ========= */
 function applyRatePreset(){
-const key = document.getElementById('ratePreset').value;
-if(!key) return;
-const years = +document.getElementById('years').value;
+  const key = document.getElementById('ratePreset').value;
+  if(!key) return;
+  const years = +document.getElementById('years').value;
 
-let yearRates=[];
-switch(key){
-case 'flat10':      yearRates = Array.from({length:years}, _=>1.00); break;
-case 'stepUp025':   yearRates = genLinearYears(1.00, +0.25, 0, 3.00, years); break;
-case 'earlyShock':  yearRates = genEarlyShockYears(1.00, 1.50, 2, 6, years); break;
-case 'ladderUp':    yearRates = genLadderYears(1.00, 0.50, 5, 6, years); break;
-case 'patternA': {
-const need = (+document.getElementById('years').value) * 2;
-const base = PRESET_HALF_RATES_PATTERN_A;
-const halfRates = base.slice(0, need);
-while (halfRates.length < need) halfRates.push(base[base.length - 1]);
-setHalfYearRates(halfRates);
-return;
-}
-case 'patternB': {
-const need = (+document.getElementById('years').value) * 2;
-const base = PRESET_HALF_RATES_PATTERN_B;
-const halfRates = base.slice(0, need);
-while (halfRates.length < need) halfRates.push(base[base.length - 1]);
-setHalfYearRates(halfRates);
-return;
-}
+  // 1) マイプリセット
+  if(key.startsWith('my:')){
+    const id = key.slice(3);
+    const presets = loadMyPresets();
+    const found = presets.find(p=>p.id===id);
+    if(found){
+      const need = halfLen();
+      const arr = found.rates.slice(0, need);
+      while(arr.length < need){ arr.push(arr[arr.length-1] ?? 1.00); }
+      setHalfYearRates(arr);
+    }
+    return;
+  }
+
+  // 2) 標準プリセット
+  let yearRates=[];
+  switch(key){
+    case 'flat10':      yearRates = Array.from({length:years}, _=>1.00); break;
+    case 'stepUp025':   yearRates = genLinearYears(1.00, +0.25, 0, 3.00, years); break;
+    case 'earlyShock':  yearRates = genEarlyShockYears(1.00, 1.50, 2, 6, years); break;
+    case 'ladderUp':    yearRates = genLadderYears(1.00, 0.50, 5, 6, years); break;
+    case 'patternA': {
+      const need = halfLen(); const base = PRESET_HALF_RATES_PATTERN_A;
+      const halfRates = base.slice(0, need);
+      while (halfRates.length < need) halfRates.push(base[base.length - 1]);
+      setHalfYearRates(halfRates);
+      return;
+    }
+    case 'patternB': {
+      const need = halfLen(); const base = PRESET_HALF_RATES_PATTERN_B;
+      const halfRates = base.slice(0, need);
+      while (halfRates.length < need) halfRates.push(base[base.length - 1]);
+      setHalfYearRates(halfRates);
+      return;
+    }
+  }
+
+  const halfRates = expandYearToHalf(yearRates);
+  setHalfYearRates(halfRates);
 }
 
-const halfRates = expandYearToHalf(yearRates);
-setHalfYearRates(halfRates);
+/* ========= マイプリセット 読み書き ========= */
+function loadMyPresets(){
+  try {
+    const raw = STORE.getItem(MY_PRESET_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(e){
+    STORE.removeItem(MY_PRESET_KEY);
+    return [];
+  }
 }
+function saveMyPresets(arr){
+  try { STORE.setItem(MY_PRESET_KEY, JSON.stringify(arr)); return true; }
+  catch(e){ console.error('プリセット保存に失敗:', e); return false; }
+}
+
+/* ========= プリセットUI構築 & 操作 ========= */
+function getCurrentHalfRates(){
+  return [...document.querySelectorAll('.half-rate-input')]
+    .map(el => Number(parseFloat(el.value)||0))
+    .map(v=>Number(v.toFixed(2)));
+}
+
+function rebuildMyPresetOptions(){
+  const group = document.getElementById('myPresetGroup');
+  if(!group) return;
+  group.innerHTML = '';
+  const presets = loadMyPresets();
+  for(const p of presets){
+    const opt = document.createElement('option');
+    opt.value = 'my:'+p.id;   // ← 選択値は "my:<id>"
+    opt.textContent = p.name;
+    group.appendChild(opt);
+  }
+}
+
+function saveAsMyPreset(){
+  // 入力欄が未生成なら生成
+  if(!document.querySelector('.half-rate-input')) { generateRateInputs(); }
+  const rates = getCurrentHalfRates();
+  if(!rates.length){ alert('金利入力欄がまだ用意できていません。もう一度お試しください。'); return; }
+
+  const nameInput = document.getElementById('myPresetName');
+  const name = (nameInput?.value || '').trim() || `マイプリセット ${new Date().toLocaleString()}`;
+  const id = Date.now().toString();
+
+  const presets = loadMyPresets();
+  presets.push({ id, name, rates });
+
+  const ok = saveMyPresets(presets);
+  if(!ok){
+    alert('ブラウザの設定で保存がブロックされている可能性があります。\n通常モード & HTTPS でお試しください。');
+    return;
+  }
+  if(nameInput) nameInput.value = '';
+  rebuildMyPresetOptions();
+  const sel = document.getElementById('ratePreset');
+  if(sel){ sel.value = 'my:'+id; }
+}
+
+function deleteSelectedMyPreset(){
+  const sel = document.getElementById('ratePreset');
+  if(!sel || !sel.value || !sel.value.startsWith('my:')){
+    alert('削除するには「マイプリセット（保存分）」から対象を選択してください。');
+    return;
+  }
+  const id = sel.value.slice(3);
+  let presets = loadMyPresets();
+  const target = presets.find(p=>p.id===id);
+  if(!target) return;
+  if(!confirm(`「${target.name}」を削除します。よろしいですか？`)) return;
+
+  presets = presets.filter(p=>p.id!==id);
+  saveMyPresets(presets);
+  rebuildMyPresetOptions();
+  sel.value = '';
+}
+/* ===== 初期化：マイプリセットの選択肢を作る ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  rebuildMyPresetOptions();
+});  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
