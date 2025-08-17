@@ -315,7 +315,7 @@ font-size: 0.95rem;
 font-weight: 600;
 color: #555;
 margin: 0 0 6px 0;
-border-left: 4px solid #0c7e72;; /* アクセントライン */
+border-left: 4px solid #0c7e72; /* アクセントライン */
 padding-left: 6px;
 }
 .preset-title {
@@ -832,6 +832,7 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 
 /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
+  window.simulate = simulate;
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value;
   let months   = years * 12;
