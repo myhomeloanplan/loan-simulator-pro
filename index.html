@@ -994,21 +994,26 @@ function drawCharts(data){
         },
         grid: { display: false }
       },
-      y: { ticks: { font: axisFont }, grid: { color: 'rgba(0,0,0,.08)' }, beginAtZero: true, min: 0 }
+      y: {
+        ticks: { font: axisFont },
+        grid: { color: 'rgba(0,0,0,.08)' },
+        beginAtZero: true,
+        min: 0
+      }
     },
     plugins: {
-    legend: { display: false },
-    tooltip: {
-      callbacks: {
-        label: function(context) {
-          // 円単位・整数で表示
-          const val = Math.round(context.parsed.y);
-          return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            // 円単位・整数で表示
+            const val = Math.round(context.parsed.y);
+            return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
+          }
         }
       }
     }
-  }
-};
+  };
 
   // 月々の支払額グラフ
   paymentChart = new Chart(document.getElementById('paymentChart').getContext('2d'), {
@@ -1040,6 +1045,7 @@ function drawCharts(data){
     } 
   });
 }
+
 
 
 /* ---------------- Excel出力 ---------------- */
