@@ -1395,6 +1395,97 @@ function renderPrepayTable(){
 function formatYen(v){
   return (v/10000).toLocaleString()+" 万円"; // 万円表記
 }  
+
+/* ---------------- グラフ描画（支払額/内訳） ---------------- */
+function drawCharts(data){
+  const labels   = data.map(d => d.month);        // ← 修正
+  const principal= data.map(d => d.principal);    // ← 修正
+  const interest = data.map(d => d.interest);     // ← 修正
+  const payment  = data.map(d => d.payment);      // ← 修正
+
+  if(paymentChart) paymentChart.destroy(); 
+  if(stackedChart) stackedChart.destroy();
+
+  const axisFont = { size:13 };
+  const common = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    scales: {
+      x: {
+        title: { display: true, text: '何年目', color: '#0e2a47', font: { weight: 'bold' } },
+        ticks: {
+          maxRotation: 0,
+          autoSkip: false,
+          font: axisFont,
+          callback: (value, index) =>
+            (index % 12 === 0) ? (Math.floor(index / 12) + 1) : ''
+        },
+        grid: { display: false }
+      },
+      y: {
+        ticks: { font: axisFont },
+        grid: { color: 'rgba(0,0,0,.08)' },
+        beginAtZero: true,
+        min: 0
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${ctx.raw.toLocaleString()} 円`
+        }
+      }
+    }
+  };
+
+  // --- 月々の支払額 ---
+  paymentChart = new Chart(
+    document.getElementById('paymentChart').getContext('2d'),
+    {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[{
+          label:'月々の支払額',
+          data:payment,
+          backgroundColor:'#0c7e86'
+        }]
+      },
+      options: common
+    }
+  );
+
+  // --- 元金/利息の内訳 ---
+  stackedChart = new Chart(
+    document.getElementById('stackedChart').getContext('2d'),
+    {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:'元金', data:principal, backgroundColor:'#0c7e86'},
+          {label:'利息', data:interest, backgroundColor:'#ffbf3a'}
+        ]
+      },
+      options:{
+        ...common,
+        scales:{
+          ...common.scales,
+          x:{...common.scales.x, stacked:true},
+          y:{...common.scales.y, stacked:true}
+        },
+        plugins:{
+          ...common.plugins,
+          legend:{ display:true, position:'top' }
+        }
+      }
+    }
+  );
+}
+
+  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
