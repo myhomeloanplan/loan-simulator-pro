@@ -496,12 +496,11 @@ border-top-color: rgba(255,255,255,0.08);
 <div class="section-title">繰上げ返済（任意）</div>
 <div class="card" style="padding:12px;">
   <div class="inline-group prepay-controls">
-    <label>方式
-      <select id="prepayMode">
-        <option value="shorten" selected>期間短縮型（推奨）</option>
-        <!-- 将来: <option value="reduce">返済額軽減型</option> -->
-      </select>
-    </label>
+    <label>方式</label>
+<div style="font-weight:700; color:var(--navy); margin-top:6px;">
+  期間短縮型（固定）
+</div>
+<input type="hidden" id="prepayMode" value="shorten">
     <label>いつ
       <select id="prepayYear"></select>
       <select id="prepayMonth"></select>
