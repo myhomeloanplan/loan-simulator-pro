@@ -994,7 +994,9 @@ plugins: {
   tooltip: {
     callbacks: {
       label: function(context){
-        const val = Math.round(context.parsed.y); // ← 小数を四捨五入して整数に
+        // parsed.y があればそれを、なければ raw を使う
+        const rawValue = context.parsed.y ?? context.raw;
+        const val = Math.round(rawValue);
         return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
       }
     }
