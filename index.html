@@ -894,7 +894,11 @@ function simulate(){
   }
 
   console.log(results);
-  // 結果をグローバルに保持（必要なら）
+// ★ 利息合計と支払配列を集計
+const totalInterest = results.reduce((sum,r)=> sum + r.interest, 0);
+const payments = results.map(r=> r.payment);
+
+// グローバルに保持
 lastSimData = results;
 lastTotals = { totalP: amount, totalI: totalInterest, payments };
 
@@ -1289,30 +1293,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const card = document.getElementById('prepayCard');
   card.style.display = (card.style.display === 'none') ? 'block' : 'none';
 }
-
-function addPrepay() {
-  const year = document.getElementById('prepayYear').value;
-  const month = document.getElementById('prepayMonth').value;
-  const amount = parseFloat(document.getElementById('prepayAmount').value) || 0;
-  const repeat = document.getElementById('prepayRepeat').value;
-
-  if (amount <= 0) {
-    alert('繰上げ返済額を入力してください');
-    return;
-  }
-
-  const tbody = document.querySelector('#prepayTable tbody');
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td>繰上げ返済</td>
-    <td>期間短縮型</td>
-    <td>${year}年目 ${month}月</td>
-    <td>${amount} 万円</td>
-    <td>${repeat}</td>
-    <td><button onclick="this.closest('tr').remove()">削除</button></td>
-  `;
-  tbody.appendChild(row);
-}  
 
 // 繰上げ返済「いつ」のプルダウンを初期化
 function populatePrepayDropdowns() {
