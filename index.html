@@ -1005,117 +1005,87 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 
 
 /* ---------------- 返済シミュレーション本体（期間短縮型） ---------------- */
+/* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value, months = years * 12;
   const repaymentType = document.querySelector("input[name='repaymentType']:checked").value;
   const rates = [...document.querySelectorAll('.half-rate-input')].map(el => parseFloat(el.value)/100);
 
-  if(!amount || !years) return alert('借入額と返済期間を入力してください。');
+  if(!amount||!years) return alert('借入額と返済期間を入力してください。');
   if(rates.length < Math.ceil(months/6)) return alert('金利の入力が不足しています。');
 
-  /* ▼ 期間外の繰上げイベントを無視（安全網） */
-  const __origEvents  = prepayEvents;
-  const __validEvents = prepayEvents.filter(ev => ev.monthIndex < months);
-  prepayEvents = __validEvents;
-
-  let balance = amount;
-  const result = [], payments = [];
+  let balance = amount; 
+  const result = [], payments = []; 
   let totalP = 0, totalI = 0;
 
-  /* ▼ 元利均等の「固定返済額」を初月条件で決定（期間短縮型の肝） */
-  const r0 = (rates[0] || 0) / 12;
-  const fixedOutPIE = (repaymentType === 'principalAndInterestEqual')
-    ? (r0 > 0
-        ? amount * r0 * Math.pow(1 + r0, months) / (Math.pow(1 + r0, months) - 1)
-        : amount / months)
-    : null; // 元金均等は不要
+  let fixedOut = 0;      // その金利区間での返済額
+  let currentSeg = -1;   // 金利セグメント管理
 
-  for(let m = 0; m < months; m++){
-    /* ── 月初：繰上げ返済（期間短縮型）を残高から控除 ── */
-    let extraPrincipal = 0;
-    const pre = prepayAmountAtMonth(m) || 0;
+  for(let m=0; m<months; m++){
+    // ▼ 月初に繰上げ返済（期間短縮型）を反映
+    const pre = prepayAmountAtMonth(m);
     if(pre > 0){
-      extraPrincipal = Math.min(pre, balance);
-      balance = Math.max(0, balance - extraPrincipal);
-    }
-
-    /* 完済直後に抜ける（繰上げだけで終わるケース） */
-    if(balance <= 0){
-      // この月の定例支払はゼロ、繰上げだけで完済
-      totalP += extraPrincipal;
-      payments.push(extraPrincipal);
-      result.push({
-        月: m + 1,
-        元金: Math.round(extraPrincipal),
-        利息: 0,
-        残高: 0,
-        支払額: Math.round(extraPrincipal)
-      });
-      break;
-    }
-
-    /* ── 当月金利・定例返済 ── */
-    const r = (rates[Math.floor(m/6)] || 0) / 12;
-    const interest = balance * r;
-    let principal = 0;
-    let out = 0;
-
-    if (repaymentType === 'principalAndInterestEqual'){
-      // 期間短縮型：毎月の返済額は固定（初月条件で決めた fixedOutPIE）
-      out = fixedOutPIE;
-
-      // 安全網：利息が固定額を超えると負債が増えるので、利息分は必ず支払う
-      if (out < interest) out = interest;
-
-      principal = out - interest;
-
-      // 最終月：固定額よりも「残高＋利息」が小さいなら、そこで完済
-      const cap = balance + interest;
-      if (out > cap){
-        out = cap;
-        principal = balance; // すべて元金へ
+      balance = Math.max(0, balance - pre);
+      if(balance <= 0){
+        result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
+        break;
       }
-    } else {
-      // 元金均等：初期借入額を総月数で等分（既存ロジックのまま）
-      principal = amount / months;
-      if (principal > balance) principal = balance; // 最終調整
-      out = principal + interest;
+      // 繰上げ後は残期間が変わるので、返済額を再計算
+      currentSeg = -1;
     }
 
-    // 残高更新
+    const r = (rates[Math.floor(m/6)]||0)/12; 
+    const remain = months - m;
+    let interest = balance * r, principal, out;
+
+    if(repaymentType==='principalAndInterestEqual'){
+      // ★ 金利セグメントが変わった時だけ返済額を再計算
+      const seg = Math.floor(m/6);
+      if(seg !== currentSeg){
+        currentSeg = seg;
+        if(r > 0){
+          fixedOut = balance * r * Math.pow(1+r, remain) / (Math.pow(1+r, remain) - 1);
+        }else{
+          fixedOut = balance / remain;
+        }
+      }
+      out = fixedOut;
+      principal = out - interest;
+      if(principal > balance){ principal = balance; out = principal + interest; }
+    }else{
+      principal = amount / months;
+      interest  = balance * r;
+      out       = principal + interest;
+    }
+
     balance -= principal;
-    if (balance < 0) balance = 0;
+    if(balance < 0) balance = 0;
 
-    // 集計（繰上げ分を合算）
-    const principalThisMonth = principal + extraPrincipal;
-    const paymentThisMonth   = out + extraPrincipal;
-
-    totalP += principalThisMonth;
+    totalP += principal;
     totalI += interest;
-    payments.push(paymentThisMonth);
+    payments.push(out);
 
-    result.push({
-      月:     m + 1,
-      元金:   Math.round(principalThisMonth),
-      利息:   Math.round(interest),
-      残高:   Math.round(balance),
-      支払額: Math.round(paymentThisMonth)
+    result.push({ 
+      月: m+1, 
+      元金: Math.round(principal), 
+      利息: Math.round(interest), 
+      残高: Math.round(balance), 
+      支払額: Math.round(out)
     });
 
-    // 完済で終了（＝期間短縮）
-    if (balance <= 0) break;
+    if(balance <= 0) break; // 完済したら終了
   }
 
-  lastSimData = result;
+  lastSimData = result; 
   lastTotals  = { totalP, totalI, payments };
-  displayResult(result, totalP, totalI, payments);
+  displayResult(result,totalP,totalI,payments); 
   drawCharts(result);
-  updatePayoffBanner(result.length, years * 12);
 
-  /* 片付け */
-  prepayEvents = __origEvents;
+  // ▼ 早期完済バナー
+  updatePayoffBanner(result.length, years * 12);
 }
+
 
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
