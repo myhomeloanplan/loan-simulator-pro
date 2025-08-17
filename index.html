@@ -1017,11 +1017,13 @@ function simulate(){
   const result = [], payments = []; 
   let totalP = 0, totalI = 0;
 
-  let fixedOut = 0;      // その金利区間での返済額
+  let fixedOut = 0;      // 区間の返済額
   let currentSeg = -1;   // 金利セグメント管理
+  let remainMonths = months; // ★動的に管理する残期間
 
-  for(let m=0; m<months; m++){
-    // ▼ 月初に繰上げ返済（期間短縮型）
+  let m = 0;
+  while(balance > 0 && remainMonths > 0){
+    // ▼ 月初に繰上げ返済
     const pre = prepayAmountAtMonth(m);
     if(pre > 0){
       balance = Math.max(0, balance - pre);
@@ -1029,22 +1031,21 @@ function simulate(){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-      // ★ 返済額はそのまま維持（再計算しない）
+      // ★返済額は据え置き（再計算しない）
     }
 
     const r = (rates[Math.floor(m/6)]||0)/12; 
-    const remain = months - m;
     let interest = balance * r, principal, out;
 
     if(repaymentType==='principalAndInterestEqual'){
-      // ★ 金利セグメントが変わった時だけ返済額を再計算
       const seg = Math.floor(m/6);
+      // 金利セグメントが変わったら、その時点の残期間で返済額を再計算
       if(seg !== currentSeg){
         currentSeg = seg;
         if(r > 0){
-          fixedOut = balance * r * Math.pow(1+r, remain) / (Math.pow(1+r, remain) - 1);
+          fixedOut = balance * r * Math.pow(1+r, remainMonths) / (Math.pow(1+r, remainMonths) - 1);
         }else{
-          fixedOut = balance / remain;
+          fixedOut = balance / remainMonths;
         }
       }
       out = fixedOut;
@@ -1071,7 +1072,8 @@ function simulate(){
       支払額: Math.round(out)
     });
 
-    if(balance <= 0) break; // 完済したら終了
+    remainMonths--; // ★残期間を1ヶ月減らす
+    m++;
   }
 
   lastSimData = result; 
@@ -1080,9 +1082,8 @@ function simulate(){
   drawCharts(result);
 
   // ▼ 早期完済メッセージ
-  updatePayoffBanner(result.length, years * 12);
+  updatePayoffBanner(result.length, months);
 }
-
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
