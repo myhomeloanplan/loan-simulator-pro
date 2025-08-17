@@ -999,13 +999,13 @@ y: { ticks: { font: axisFont }, grid: { color: 'rgba(0,0,0,.08)' }, beginAtZero:
 plugins: { 
   legend: { display: false },
   tooltip: {
-    callbacks: {
-      label: function(context){
-        const val = Math.floor(context.parsed.y); 
-        return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
-      }
+  callbacks: {
+    label: ctx => {
+      const val = ctx.raw !== undefined ? Math.round(ctx.raw) : 0;
+      return `${ctx.dataset.label}: ${val.toLocaleString()} 円`;
     }
   }
+}
 }
 };
 
