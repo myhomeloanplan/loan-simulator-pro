@@ -407,8 +407,6 @@ border-top-color: rgba(255,255,255,0.08);
   
 </style>
 </head>
-
-<body onload="generateRateInputs()">
 <div class="title-wrap">
 <div class="subtitle">半年ごとに金利を変更できる</div>
     <h1 class="title">
@@ -643,16 +641,6 @@ function syncMiscFromText(){
 const raw = document.getElementById('miscCost').value.replace(/[^\d]/g,'');
 const n = parseInt(raw||'0',10);
 document.getElementById('miscCost').value = n.toLocaleString();
-}
-function syncYearsFromRange(){ 
-const v=+document.getElementById('years-range').value; 
-document.getElementById('years').value=v; 
-generateRateInputs();
-}
-function syncYearsFromInput(){ 
-const v=+document.getElementById('years').value; 
-document.getElementById('years-range').value=v; 
-generateRateInputs();
 }
 
 /* ---------------- 金利入力欄の生成 ---------------- */
@@ -1252,15 +1240,6 @@ function deleteSelectedMyPreset(){
   rebuildMyPresetOptions();
   sel.value = '';
 }
-/* ===== 初期化：マイプリセットの選択肢を作る ===== */
-document.addEventListener('DOMContentLoaded', () => {
-  rebuildMyPresetOptions();
-});  
-
-  function togglePrepay() {
-  const card = document.getElementById('prepayCard');
-  card.style.display = (card.style.display === 'none') ? 'block' : 'none';
-}
 
 // 繰上げ返済「いつ」のプルダウンを初期化
 function populatePrepayDropdowns() {
@@ -1287,12 +1266,6 @@ function populatePrepayDropdowns() {
     monthSel.appendChild(opt);
   }
 }
-
-// 初期化時に呼び出し
-document.addEventListener("DOMContentLoaded", () => {
-  rebuildMyPresetOptions();
-  populatePrepayDropdowns();   // ← これを追加
-});
 
 // 返済年数が変わったら再構築
 function syncYearsFromInput() {
@@ -1447,6 +1420,12 @@ function drawCharts(data){
   );
 }
 
+  // 初期化はこの1本だけに統一
+window.addEventListener('DOMContentLoaded', () => {
+  generateRateInputs();       // 半年入力欄とレートグラフを初期生成
+  rebuildMyPresetOptions();   // マイプリセットのセレクトを構築
+  populatePrepayDropdowns();  // 繰上げ返済の年・月プルダウン
+});
   
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
