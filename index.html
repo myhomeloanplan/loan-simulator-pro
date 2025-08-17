@@ -646,62 +646,81 @@ document.getElementById('miscCost').value = n.toLocaleString();
 
 /* ---------------- 金利入力欄の生成 ---------------- */
 function generateRateInputs(){
-const container=document.getElementById('rate-inputs'); 
-container.innerHTML='';
-const years=+document.getElementById('years').value;
+  const container = document.getElementById('rate-inputs'); 
 
-// 適用範囲プルダウン
-const scope=document.getElementById('applyScope'); 
-scope.innerHTML='';
-const optAll=document.createElement('option'); 
-optAll.value='all'; optAll.textContent='全期間'; 
-scope.appendChild(optAll);
-for(let y=2;y<=years;y++){
-const o=document.createElement('option'); 
-o.value=String(y); 
-o.textContent=`${y}年目以降`; 
-scope.appendChild(o); 
+  // ★ いまの半期金利を退避（初回=未生成なら null）
+  const hasInputs = !!document.querySelector('.half-rate-input');
+  const prevRates = hasInputs ? getCurrentHalfRates() : null;
+
+  container.innerHTML = '';
+  const years = +document.getElementById('years').value;
+
+  // 適用範囲プルダウン
+  const scope = document.getElementById('applyScope');
+  scope.innerHTML = '';
+  const optAll = document.createElement('option');
+  optAll.value = 'all'; optAll.textContent = '全期間';
+  scope.appendChild(optAll);
+  for(let y=2; y<=years; y++){
+    const o = document.createElement('option');
+    o.value = String(y);
+    o.textContent = `${y}年目以降`;
+    scope.appendChild(o);
+  }
+
+  // 見出し行（前半/後半）
+  const head = document.createElement('div');
+  head.className = 'rate-input-head';
+  const stub = document.createElement('span'); stub.className = 'col-year';
+  const h1 = document.createElement('span'); h1.className = 'col-half'; h1.textContent = '前半';
+  const h2 = document.createElement('span'); h2.className = 'col-half'; h2.textContent = '後半';
+  head.append(stub, h1, h2);
+  container.appendChild(head);
+
+  // 半年ごと入力
+  for(let y=1; y<=years; y++){
+    const row = document.createElement('div');
+    row.className = 'rate-input-row';
+    const label = document.createElement('span');
+    label.textContent = `${y}年目`;
+
+    const input1 = document.createElement('input');
+    const input2 = document.createElement('input');
+
+    [input1,input2].forEach((inp,i)=>{
+      inp.type='number';
+      inp.step='0.01';
+      inp.value='1.00'; // デフォルト（後で復元で上書き）
+      inp.className='rate-input half-rate-input';
+      inp.dataset.index=(y-1)*2+i;
+      inp.addEventListener('input', updateRateChartFromInputs);
+    });
+
+    row.append(label, input1, input2);
+    container.appendChild(row);
+  }
+
+  // ★ 退避しておいた金利を復元（長さ変更に対応）
+  if (prevRates && prevRates.length){
+    const need = years * 2;
+    const restored = prevRates.slice(0, need);
+    while (restored.length < need){
+      restored.push(restored[restored.length - 1] ?? 1.00);
+    }
+    const inputs = [...document.querySelectorAll('.half-rate-input')];
+    restored.forEach((v,i)=>{ if(inputs[i]) inputs[i].value = Number(v).toFixed(2); });
+  }
+
+  // グラフ再描画＆セレクト再構築
+  drawRateChart();
+  rebuildMyPresetOptions();
+
+  // ★ 値を復元した場合は即再計算
+  if (prevRates && prevRates.length){
+    simulate();
+  }
 }
 
-// ▼ 追加：見出し行（前半/後半）
-const head = document.createElement('div');
-head.className = 'rate-input-head';
-const stub = document.createElement('span');  // 左端：年ラベルと幅を合わせるダミー
-stub.className = 'col-year';
-const h1 = document.createElement('span'); h1.className = 'col-half'; h1.textContent = '前半';
-const h2 = document.createElement('span'); h2.className = 'col-half'; h2.textContent = '後半';
-head.append(stub, h1, h2);
-container.appendChild(head);
-
-// 半年ごと入力
-for(let y=1;y<=years;y++){
-const row=document.createElement('div'); 
-row.className='rate-input-row';
-const label=document.createElement('span'); 
-label.textContent=`${y}年目`;
-
-const input1=document.createElement('input'); 
-const input2=document.createElement('input');
-
-[input1,input2].forEach((inp,i)=>{
-inp.type='number'; 
-inp.step='0.01'; 
-inp.value='1.00';
-inp.className='rate-input half-rate-input';
-inp.dataset.index=(y-1)*2+i;
-inp.addEventListener('input',updateRateChartFromInputs);
-});
-
-row.appendChild(label); 
-row.appendChild(input1); 
-row.appendChild(input2); 
-container.appendChild(row);
-}
-
-// 初期描画
-drawRateChart();
-rebuildMyPresetOptions();
-}
 
 /* ---------------- 入力欄 → グラフ更新 ---------------- */
 function updateRateChartFromInputs(){
