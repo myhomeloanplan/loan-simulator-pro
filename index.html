@@ -1028,8 +1028,8 @@ function simulate(){
   const mode = allSame ? 'fixed' : 'variable';
 
   // 繰上げ返済情報を取得（任意）
-  //const prepayMonth = +document.getElementById('prepayMonth')?.value || null;
-  //const prepayAmount = parseAmount(document.getElementById('prepayAmount')?.value) || 0;
+  const prepayMonth = +document.getElementById('prepayMonth')?.value || null;
+  const prepayAmount = parseAmount(document.getElementById('prepayAmount')?.value) || 0;
 
   let balance = amount;
   let remainMonths = months;
@@ -1520,7 +1520,11 @@ function updatePayoffBanner(usedMonths, totalMonths){
     el.textContent = '';
   }
 }
-
+// 円表記にフォーマットする関数
+function formatYen(num) {
+  if (isNaN(num)) return "0円";
+  return num.toLocaleString('ja-JP') + " 円";
+}
   
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
