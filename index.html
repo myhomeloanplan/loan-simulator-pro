@@ -1026,21 +1026,9 @@ function simulate(){
   let balance = amount; 
   const result = [], payments = []; 
   let totalP = 0, totalI = 0;
+  let remainMonths = months;
 
-  let fixedOut = 0;        // 元利均等の返済額（最初に決めて固定）
-  let remainMonths = months; // 残期間
   let m = 0;
-
-  // ▼ 返済額を最初に一度だけ計算（元利均等の場合）
-  if(repaymentType==='principalAndInterestEqual'){
-    const r0 = (rates[0] || 0) / 12;
-    if(r0 > 0){
-      fixedOut = amount * r0 * Math.pow(1+r0, months) / (Math.pow(1+r0, months) - 1);
-    } else {
-      fixedOut = amount / months;
-    }
-  }
-
   while(balance > 0 && remainMonths > 0){
     const r = (rates[Math.floor(m/6)]||0)/12; 
 
@@ -1058,15 +1046,19 @@ function simulate(){
     let interest = balance * r, principal, out;
 
     if(repaymentType==='principalAndInterestEqual'){
-      // ★返済額は最初に決めた fixedOut を常に使う
-      out = fixedOut;
+      // ★ 金利と残期間から毎回再計算
+      if(r > 0){
+        out = balance * r * Math.pow(1+r, remainMonths) / (Math.pow(1+r, remainMonths) - 1);
+      } else {
+        out = balance / remainMonths;
+      }
       principal = out - interest;
       if(principal > balance){ 
         principal = balance; 
         out = principal + interest; 
       }
     }else{
-      // ★元金均等：残高÷残り月数で計算
+      // ★ 元金均等
       principal = balance / remainMonths;
       interest  = balance * r;
       out       = principal + interest;
@@ -1099,6 +1091,7 @@ function simulate(){
   // ▼ 早期完済メッセージ
   updatePayoffBanner(result.length, months);
 }
+
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
