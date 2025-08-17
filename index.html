@@ -440,6 +440,44 @@ border-top-color: rgba(255,255,255,0.08);
 <div class="section-title">諸費用（万円・現金払い）</div>
 <input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
 
+<!-- ▼ 繰上げ返済（任意） -->
+<div class="section-title">繰上げ返済（任意）</div>
+<div class="card" style="padding:12px;">
+  <div class="inline-group">
+    <label>方式
+      <select id="prepayMode">
+        <option value="shorten" selected>期間短縮型（推奨）</option>
+        <!-- 将来: <option value="reduce">返済額軽減型</option> -->
+      </select>
+    </label>
+    <label>いつ
+      <select id="prepayYear"></select>
+      <select id="prepayMonth"></select>
+    </label>
+    <label>金額（万円）
+      <input type="number" id="prepayAmount" step="10" value="100" />
+    </label>
+    <label>繰り返し
+      <select id="prepayRepeat">
+        <option value="none" selected>単発</option>
+        <option value="yearly">毎年</option>
+        <option value="bonus">ボーナス月（6・12月）</option>
+      </select>
+    </label>
+    <button type="button" class="btn btn-compact" onclick="addPrepay()">＋ 追加</button>
+  </div>
+
+  <table id="prepayTable" style="margin-top:10px; width:100%; font-size:0.9rem;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">名称</th>
+        <th>方式</th><th>タイミング</th><th>金額(万円)</th><th>繰り返し</th><th>操作</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>  
+  
 <!-- 金利 -->
 <div class="section-title">金利（％）</div>
 
@@ -568,6 +606,96 @@ let lastSimData = [], rateChartInstance = null, paymentChart = null, stackedChar
 let lastTotals = null; // ← 追加：未丸めの合計（総元金・総利息・支払配列）を保持
 let simTimer = null;   // ← 追加：手入力時のデバウンス用タイマー
 
+/* ▼ 繰上げ返済イベント管理 */
+let prepayEvents = []; // {id, mode, monthIndex, amountYen, repeat}
+
+function initPrepaySelectors(){
+  const years = +document.getElementById('years').value;
+  const ySel = document.getElementById('prepayYear');
+  const mSel = document.getElementById('prepayMonth');
+  if(!ySel || !mSel) return;
+  ySel.innerHTML = ''; mSel.innerHTML = '';
+  for(let y=1; y<=years; y++){
+    const o = document.createElement('option'); o.value = y; o.textContent = `${y}年目`;
+    ySel.appendChild(o);
+  }
+  for(let m=1; m<=12; m++){
+    const o = document.createElement('option'); o.value = m; o.textContent = `${m}月`;
+    mSel.appendChild(o);
+  }
+}
+document.addEventListener('DOMContentLoaded', initPrepaySelectors);
+
+// 返済期間変更時にプルダウンも更新
+const _origSyncYearsFromRange = syncYearsFromRange;
+syncYearsFromRange = function(){
+  _origSyncYearsFromRange();
+  initPrepaySelectors();
+};
+const _origSyncYearsFromInput = syncYearsFromInput;
+syncYearsFromInput = function(){
+  _origSyncYearsFromInput();
+  initPrepaySelectors();
+};
+
+function addPrepay(){
+  const mode = document.getElementById('prepayMode').value; // 'shorten'
+  const y = +document.getElementById('prepayYear').value;   // 1..years
+  const m = +document.getElementById('prepayMonth').value;  // 1..12
+  const amountMan = +document.getElementById('prepayAmount').value || 0;
+  const repeat = document.getElementById('prepayRepeat').value;
+  if(amountMan<=0) return alert('金額を入力してください');
+  const monthIndex = (y-1)*12 + (m-1); // 0-based
+  prepayEvents.push({
+    id: Date.now(),
+    mode,
+    monthIndex,
+    amountYen: amountMan * 10000,
+    repeat // 'none' | 'yearly' | 'bonus'
+  });
+  renderPrepayTable();
+}
+
+function renderPrepayTable(){
+  const tb = document.querySelector('#prepayTable tbody');
+  if(!tb) return;
+  tb.innerHTML = prepayEvents.map(ev => {
+    const y = Math.floor(ev.monthIndex/12)+1;
+    const m = (ev.monthIndex%12)+1;
+    const rLabel = ev.repeat==='none'?'単発':(ev.repeat==='yearly'?'毎年': 'ボーナス(6・12)');
+    return `<tr>
+      <td style="text-align:left;">イベント${ev.id%1000}</td>
+      <td>${ev.mode==='shorten'?'期間短縮型':'—'}</td>
+      <td>${y}年目 ${m}月</td>
+      <td>${(ev.amountYen/10000).toLocaleString()}</td>
+      <td>${rLabel}</td>
+      <td><button class="btn btn-mini btn-danger" onclick="removePrepay(${ev.id})">削除</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function removePrepay(id){
+  prepayEvents = prepayEvents.filter(e=>e.id!==id);
+  renderPrepayTable();
+}
+
+/* ▼ 月番号mにヒットする繰上げ返済の合計を返す */
+function prepayAmountAtMonth(m){
+  let sum = 0;
+  for(const ev of prepayEvents){
+    if(ev.repeat==='none'){
+      if(m===ev.monthIndex) sum += ev.amountYen;
+    }else if(ev.repeat==='yearly'){
+      if(m>=ev.monthIndex && (m-ev.monthIndex)%12===0) sum += ev.amountYen;
+    }else if(ev.repeat==='bonus'){
+      const mm = (m%12)+1;
+      if((mm===6 || mm===12) && m>=ev.monthIndex) sum += ev.amountYen;
+    }
+  }
+  return sum;
+}
+
+  
 /* ---------------- ユーティリティ ---------------- */
 function parseAmount(v){ return parseFloat(v.replace(/,/g,''))*10000; }
 /* ========= localStorage 安全ラッパー ========= */
@@ -814,6 +942,11 @@ const result=[], payments=[];
 let totalP=0,totalI=0;
 
 for(let m=0;m<months;m++){
+// ▼ 月初に繰上げ返済（期間短縮型）を反映
+  const pre = prepayAmountAtMonth(m);  // 事前に追加した関数
+  if(pre > 0){
+    balance = Math.max(0, balance - pre);
+  }  
 const r=(rates[Math.floor(m/6)]||0)/12, remain=months-m;
 let interest=balance*r, principal, out;
 if(repaymentType==='principalAndInterestEqual'){
