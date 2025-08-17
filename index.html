@@ -1003,8 +1003,6 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 });
 }
 
-
-/* ---------------- 返済シミュレーション本体（期間短縮型） ---------------- */
 /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
@@ -1023,7 +1021,7 @@ function simulate(){
   let currentSeg = -1;   // 金利セグメント管理
 
   for(let m=0; m<months; m++){
-    // ▼ 月初に繰上げ返済（期間短縮型）を反映
+    // ▼ 月初に繰上げ返済（期間短縮型）
     const pre = prepayAmountAtMonth(m);
     if(pre > 0){
       balance = Math.max(0, balance - pre);
@@ -1031,8 +1029,7 @@ function simulate(){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-      // 繰上げ後は残期間が変わるので、返済額を再計算
-      currentSeg = -1;
+      // ★ 返済額はそのまま維持（再計算しない）
     }
 
     const r = (rates[Math.floor(m/6)]||0)/12; 
@@ -1082,10 +1079,9 @@ function simulate(){
   displayResult(result,totalP,totalI,payments); 
   drawCharts(result);
 
-  // ▼ 早期完済バナー
+  // ▼ 早期完済メッセージ
   updatePayoffBanner(result.length, years * 12);
 }
-
 
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
