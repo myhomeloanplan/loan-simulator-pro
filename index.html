@@ -407,6 +407,7 @@ border-top-color: rgba(255,255,255,0.08);
   
 </style>
 </head>
+<body>  
 <div class="title-wrap">
 <div class="subtitle">半年ごとに金利を変更できる</div>
     <h1 class="title">
@@ -941,18 +942,30 @@ legacy.textContent = `🏁 総支払額（諸費用含む）: ${totalRepay.toLoc
 const show=document.getElementById('toggle-table').checked;
 const wrap=document.getElementById('repayment-table');
 wrap.innerHTML='';
-if(show){
-const table=document.createElement('table'), thead=table.createTHead(), tbody=table.createTBody();
-thead.innerHTML='<tr><th>月</th><th>元金</th><th>利息</th><th>支払額</th><th>残高</th></tr>';
-for(const row of data){
-const tr=tbody.insertRow();
-for(const k of ['月','元金','利息','支払額','残高']){
-const td=tr.insertCell();
-td.textContent=row[k].toLocaleString();
-td.style.textAlign='right';
-}
-}
-wrap.appendChild(table);
+if (show) {
+  const table = document.createElement('table'),
+        thead = table.createTHead(),
+        tbody = table.createTBody();
+
+  thead.innerHTML =
+    '<tr><th>月</th><th>元金</th><th>利息</th><th>支払額</th><th>残高</th></tr>';
+
+  for (const row of data) {
+    const tr = tbody.insertRow();
+    const cells = [
+      row.month,      // 月
+      row.principal,  // 元金
+      row.interest,   // 利息
+      row.payment,    // 支払額
+      row.balance     // 残高
+    ];
+    for (const val of cells) {
+      const td = tr.insertCell();
+      td.textContent = Math.round(val).toLocaleString();
+      td.style.textAlign = 'right';
+    }
+  }
+  wrap.appendChild(table);
 }
 }
 
@@ -968,7 +981,7 @@ XLSX.writeFile(wb,'loan_simulation.xlsx');
 document.addEventListener('change', e => {
 if (e.target && e.target.id === 'toggle-table' && lastSimData.length) {
 // 丸め済み明細から再集計せず、未丸めの合計を使って描画
-const fallbackPays = lastSimData.map(r => r['支払額']);
+const fallbackPays = lastSimData.map(r => r.payment);
 const { totalP, totalI, payments } = lastTotals || { totalP: 0, totalI: 0, payments: fallbackPays };
 displayResult(lastSimData, totalP, totalI, payments);
 }
