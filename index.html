@@ -894,7 +894,13 @@ function simulate(){
   }
 
   console.log(results);
-  return results;
+  // 結果をグローバルに保持（必要なら）
+lastSimData = results;
+lastTotals = { totalP: amount, totalI: totalInterest, payments };
+
+// 表示更新
+displayResult(results, amount, totalInterest, payments);
+drawCharts(results);
 }
 
 
@@ -1398,7 +1404,9 @@ function renderPrepayTable(){
     tbody.appendChild(tr);
   });
 }
-  
+function formatYen(v){
+  return (v/10000).toLocaleString()+" 万円"; // 万円表記
+}  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
