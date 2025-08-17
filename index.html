@@ -440,6 +440,41 @@ border-top-color: rgba(255,255,255,0.08);
 <div class="section-title">諸費用（万円・現金払い）</div>
 <input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
 
+<!-- ▼ 繰上げ返済（任意） -->
+<div class="section-title" style="cursor:pointer;" onclick="togglePrepay()">
+  ▶︎ 繰り上げ返済（任意）※期間短縮型
+</div>
+<div class="card" id="prepayCard" style="padding:12px; display:none;">
+  <div class="inline-group prepay-controls">
+  <input type="hidden" id="prepayMode" value="shorten">
+    <label>いつ
+      <select id="prepayYear"></select>
+      <select id="prepayMonth"></select>
+    </label>
+    <label>金額（万円）
+      <input type="number" id="prepayAmount" step="10" value="100" />
+    </label>
+    <label>繰り返し
+      <select id="prepayRepeat">
+        <option value="none" selected>単発</option>
+        <option value="yearly">毎年</option>
+        <option value="bonus">ボーナス月（6・12月）</option>
+      </select>
+    </label>
+    <button type="button" class="btn btn-compact" onclick="addPrepay()">＋ 追加</button>
+  </div>
+
+  <table id="prepayTable" style="margin-top:10px; width:100%; font-size:0.9rem;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">名称</th>
+        <th>方式</th><th>タイミング</th><th>金額(万円)</th><th>繰り返し</th><th>操作</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>  
+  
 <!-- 金利 -->
 <div class="section-title">金利（％）</div>
 
@@ -1217,6 +1252,36 @@ function deleteSelectedMyPreset(){
 document.addEventListener('DOMContentLoaded', () => {
   rebuildMyPresetOptions();
 });  
+
+  function togglePrepay() {
+  const card = document.getElementById('prepayCard');
+  card.style.display = (card.style.display === 'none') ? 'block' : 'none';
+}
+
+function addPrepay() {
+  const year = document.getElementById('prepayYear').value;
+  const month = document.getElementById('prepayMonth').value;
+  const amount = parseFloat(document.getElementById('prepayAmount').value) || 0;
+  const repeat = document.getElementById('prepayRepeat').value;
+
+  if (amount <= 0) {
+    alert('繰上げ返済額を入力してください');
+    return;
+  }
+
+  const tbody = document.querySelector('#prepayTable tbody');
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>繰上げ返済</td>
+    <td>期間短縮型</td>
+    <td>${year}年目 ${month}月</td>
+    <td>${amount} 万円</td>
+    <td>${repeat}</td>
+    <td><button onclick="this.closest('tr').remove()">削除</button></td>
+  `;
+  tbody.appendChild(row);
+}  
+
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
