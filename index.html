@@ -461,6 +461,19 @@ border-top-color: rgba(255,255,255,0.08);
   background-color: rgba(0,0,0,0.05);
   border-radius: 6px;
 }
+/* 早期完済バナー */
+.paidoff-banner{
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 900;
+  background: #fff7e6;
+  color: #8a4b00;
+  border: 1px solid #ffe0a3;
+  box-shadow: 0 6px 16px rgba(0,0,0,.06);
+}
+
+
 </style>
 </head>
 
@@ -616,6 +629,10 @@ border-top-color: rgba(255,255,255,0.08);
 <li class="summary-row"><span class="row-label">最大</span><strong class="row-value" id="kpi-max">—</strong></li>
 </ul>
 </section>
+
+<!-- 早期完済メッセージ -->
+<div id="paidoff-banner" class="paidoff-banner" style="display:none;" aria-live="polite"></div>
+
 
 <!-- グラフ -->
 <div class="chart-block">
@@ -1094,6 +1111,7 @@ function simulate(){
   lastTotals  = { totalP, totalI, payments };
   displayResult(result, totalP, totalI, payments);
   drawCharts(result);
+  updatePayoffBanner(result.length, years * 12);
 
   /* 片付け */
   prepayEvents = __origEvents;
@@ -1489,6 +1507,35 @@ function togglePrepay(){
   // 見出しの ▸ / ▼ を切り替え
   title.textContent = (isHidden ? '▼' : '▶︎') + ' 繰り上げ返済（任意）※期間短縮型';
 }
+/* 早期完済バナー更新 */
+function updatePayoffBanner(usedMonths, totalMonths){
+  const el = document.getElementById('paidoff-banner');
+  if(!el) return;
+
+  if(usedMonths < totalMonths){
+    const y  = Math.floor(usedMonths / 12);
+    const m  = usedMonths % 12;
+    const sy = Math.floor((totalMonths - usedMonths) / 12);
+    const sm = (totalMonths - usedMonths) % 12;
+
+    const doneParts = [];
+    if(y) doneParts.push(`${y}年`);
+    if(m) doneParts.push(`${m}ヶ月`);
+    const doneText = doneParts.length ? doneParts.join('') : '0ヶ月';
+
+    const savedParts = [];
+    if(sy) savedParts.push(`${sy}年`);
+    if(sm) savedParts.push(`${sm}ヶ月`);
+    const savedText = savedParts.length ? `（予定より${savedParts.join('')}短縮）` : '';
+
+    el.textContent = `🎉 ${doneText}で完済！${savedText}`;
+    el.style.display = 'block';
+  }else{
+    el.style.display = 'none';
+    el.textContent = '';
+  }
+}
+
   
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
