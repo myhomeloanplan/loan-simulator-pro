@@ -979,34 +979,25 @@ function drawCharts(data){
   if(stackedChart) stackedChart.destroy();
 
   const axisFont = { size:13 };
-
-  // 共通オプション
   const common = {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
     scales: {
       x: {
-        title: {
-          display: true,
-          text: '何年目',
-          color: '#0e2a47',
-          font: { weight: 'bold' }
-        },
+        title: { display: true, text: '何年目', color: '#0e2a47', font: { weight: 'bold' } },
         ticks: {
           maxRotation: 0,
           autoSkip: false,
           font: axisFont,
-          callback: (value, index) =>
-            (index % 12 === 0) ? (Math.floor(index / 12) + 1) : ''
+          callback: (value, index) => (index % 12 === 0) ? (Math.floor(index / 12) + 1) : ''
         },
         grid: { display: false }
       },
       y: {
-        ticks: {
+        ticks: { 
           font: axisFont,
-          // 円単位に統一
-          callback: (val) => val.toLocaleString() + ' 円'
+          callback: function(value){ return value.toLocaleString() + ' 円'; } // ← y軸も円表示
         },
         grid: { color: 'rgba(0,0,0,.08)' },
         beginAtZero: true,
@@ -1018,57 +1009,44 @@ function drawCharts(data){
       tooltip: {
         callbacks: {
           label: function(context) {
-            // 円単位・整数で表示
-            const val = Math.round(context.parsed.y || 0);
+            const val = Math.round(context.parsed.y);
             return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
           }
         }
       }
     }
-  };
-
+  }; // ← ここで閉じて終わり！
+  
   // 月々の支払額グラフ
-  paymentChart = new Chart(
-    document.getElementById('paymentChart').getContext('2d'),
-    {
-      type:'bar', 
-      data:{ 
-        labels, 
-        datasets:[{
-          label:'月々の支払額',
-          data:payment,
-          backgroundColor:'#0c7e86'
-        }]
-      }, 
-      options: common 
-    }
-  );
+  paymentChart = new Chart(document.getElementById('paymentChart').getContext('2d'), {
+    type:'bar', 
+    data:{ 
+      labels, 
+      datasets:[{ label:'月々の支払額', data:payment, backgroundColor:'#0c7e86' }]
+    }, 
+    options: common 
+  });
 
   // 支払内訳（元金+利息）
-  stackedChart = new Chart(
-    document.getElementById('stackedChart').getContext('2d'),
-    {
-      type:'bar', 
-      data:{ 
-        labels, 
-        datasets:[
-          { label:'元金', data:principal, backgroundColor:'#0c7e86' },
-          { label:'利息', data:interest, backgroundColor:'#ffbf3a' }
-        ]
-      },
-      options:{ 
-        ...common, 
-        scales:{ 
-          ...common.scales, 
-          x:{ ...common.scales.x, stacked:true }, 
-          y:{ ...common.scales.y, stacked:true } 
-        } 
+  stackedChart = new Chart(document.getElementById('stackedChart').getContext('2d'), {
+    type:'bar', 
+    data:{ 
+      labels, 
+      datasets:[
+        { label:'元金', data:principal, backgroundColor:'#0c7e86' },
+        { label:'利息', data:interest, backgroundColor:'#ffbf3a' }
+      ]
+    },
+    options:{ 
+      ...common, 
+      scales:{ 
+        ...common.scales, 
+        x:{ ...common.scales.x, stacked:true }, 
+        y:{ ...common.scales.y, stacked:true } 
       } 
-    }
-  );
+    } 
+  });
 }
-
-
 
 
 /* ---------------- Excel出力 ---------------- */
