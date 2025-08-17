@@ -1050,7 +1050,7 @@ function simulate(){
       }
       out = fixedOut;
       principal = out - interest;
-      if(principal > balance){ principal = balance; out = principal + interest; }
+      if(principal > balance){ principal = balance; }
     }else{
       principal = amount / months;
       interest  = balance * r;
