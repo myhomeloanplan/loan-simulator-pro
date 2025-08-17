@@ -710,6 +710,7 @@ function addPrepay(){
     repeat // 'none' | 'yearly' | 'bonus'
   });
   renderPrepayTable();
+  simulate();
 }
 
 function renderPrepayTable(){
@@ -733,6 +734,7 @@ function renderPrepayTable(){
 function removePrepay(id){
   prepayEvents = prepayEvents.filter(e=>e.id!==id);
   renderPrepayTable();
+  simulate();
 }
 
 /* ▼ 月番号mにヒットする繰上げ返済の合計を返す */
@@ -994,6 +996,11 @@ function simulate(){
   if(!amount || !years) return alert('借入額と返済期間を入力してください。');
   if(rates.length < Math.ceil(months/6)) return alert('金利の入力が不足しています。');
 
+// ▼ 期間外の繰上げイベントを無視（安全網）
+  const __origEvents  = prepayEvents;                         // 退避
+  const __validEvents = prepayEvents.filter(ev => ev.monthIndex < months);
+  prepayEvents = __validEvents;                               // 一時的に差し替え
+  
   let balance = amount;
   const result = [], payments = [];
   let totalP = 0, totalI = 0;
@@ -1028,7 +1035,10 @@ function simulate(){
     }
 
     // 数値誤差対策：定例元金が残高を超えないようにする
-    if(principal > balance) principal = balance;
+   if (principal > balance) {
+  principal = balance;
+  out = principal + interest; // 最終月は定例 out を上書き
+}
 
     // ▼ 残高を定例元金ぶん減らす
     balance -= principal;
