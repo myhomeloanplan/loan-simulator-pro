@@ -845,66 +845,78 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value;
-  let months   = years*12;
-  const rates  = [...document.querySelectorAll('.half-rate-input')].map(el=>parseFloat(el.value)||0);
+  let months   = years * 12;
+  const rates  = [...document.querySelectorAll('.half-rate-input')]
+                   .map(el => parseFloat(el.value) || 0);
 
   let balance = amount;
   let results = [];
 
-  // 初期毎月返済額
-  function calcPayment(principal,startMonth){
-    let r = (rates[Math.floor(startMonth/6)]||0)/100/12;
-    return principal * r / (1 - Math.pow(1+r, -months));
+  // 月々返済額を計算する関数
+  function calcPayment(principal, startMonth, remainMonths){
+    let r = (rates[Math.floor(startMonth/6)]||0) / 100 / 12;
+    return principal * r / (1 - Math.pow(1+r, -remainMonths));
   }
-  let payment = calcPayment(balance,0);
 
-  for(let m=1;m<=months;m++){
-    let r = (rates[Math.floor((m-1)/6)]||0)/100/12;
+  // 初期返済額
+  let payment = calcPayment(balance, 0, months);
+
+  for(let m=1; m<=months; m++){
+    let r = (rates[Math.floor((m-1)/6)]||0) / 100 / 12;
     let interest = balance * r;
-    let principal= payment - interest;
-    if(principal<0) principal=0;
+    let principal = payment - interest;
+    if(principal < 0) principal = 0;
+
     balance -= principal;
     let thisPayment = payment;
 
     // ★ 繰上げ返済チェック
-    let curYear = Math.floor((m-1)/12)+1;
-    let curMonth= ((m-1)%12)+1;
+    let curYear  = Math.floor((m-1)/12) + 1;
+    let curMonth = ((m-1)%12) + 1;
+
     prepayList.forEach(p=>{
       if(p.repeat==="none" && p.year===curYear && p.month===curMonth){
-        const pay = Math.min(p.amount,balance);
+        // 追加返済
+        const pay = Math.min(p.amount, balance);
         balance -= pay;
         principal += pay;
         thisPayment += pay;
 
-        // 期間短縮型: 残り期間を再計算
-        let tmp = balance, newMonths=0;
-        while(tmp>0 && newMonths<1000){
-          let rr = (rates[Math.floor((m+newMonths)/6)]||0)/100/12;
-          let int2= tmp*rr;
-          let prin2= payment-int2;
-          tmp -= prin2;
-          newMonths++;
+        // 期間短縮型: 残高が減ったので残り期間を再計算
+        const remainMonths = months - m;
+        if(remainMonths > 0){
+          // 支払額は据え置きで「完済月を短縮」
+          let tmp = balance, newMonths = 0;
+          while(tmp > 0 && newMonths < 1000){
+            let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
+            let int2 = tmp * rr;
+            let prin2 = payment - int2;
+            if(prin2 <= 0) break;
+            tmp -= prin2;
+            newMonths++;
+          }
+          months = m + newMonths;
         }
-        months = m+newMonths;
       }
     });
 
-    results.push({month:m,payment:thisPayment,interest,principal,balance});
-    if(balance<=0) break;
+    results.push({month:m, payment:thisPayment, interest, principal, balance});
+    if(balance <= 0) break;
   }
 
-  console.log(results);
-// ★ 利息合計と支払配列を集計
-const totalInterest = results.reduce((sum,r)=> sum + r.interest, 0);
-const payments = results.map(r=> r.payment);
+  // 利息合計と支払配列を集計
+  const totalInterest = results.reduce((sum,r)=> sum + r.interest, 0);
+  const payments = results.map(r=> r.payment);
 
-// グローバルに保持
-lastSimData = results;
-lastTotals = { totalP: amount, totalI: totalInterest, payments };
+  // グローバルに保持
+  lastSimData = results;
+  lastTotals  = { totalP: amount, totalI: totalInterest, payments };
 
-// 表示更新
-displayResult(results, amount, totalInterest, payments);
-drawCharts(results);
+  // 表示更新
+  displayResult(results, amount, totalInterest, payments);
+  drawCharts(results);
+
+  return results;
 }
 
 
