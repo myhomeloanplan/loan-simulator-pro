@@ -1044,17 +1044,7 @@ function simulate(){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-      // ★残り月数を更新（現在の月以降）
-      remainMonths = months - m;
-
-      // ★繰上げ後に返済額を再計算（元利均等のみ）
-      if(repaymentType==='principalAndInterestEqual'){
-        if(r > 0){
-          fixedOut = balance * r * Math.pow(1+r, remainMonths) / (Math.pow(1+r, remainMonths) - 1);
-        }else{
-          fixedOut = balance / remainMonths;
-        }
-      }
+     
     }
 
     let interest = balance * r, principal, out;
