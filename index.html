@@ -1285,6 +1285,51 @@ function addPrepay() {
   tbody.appendChild(row);
 }  
 
+// 繰上げ返済「いつ」のプルダウンを初期化
+function populatePrepayDropdowns() {
+  const years = +document.getElementById("years").value; // 返済年数を取得
+  const yearSel = document.getElementById("prepayYear");
+  const monthSel = document.getElementById("prepayMonth");
+
+  yearSel.innerHTML = "";
+  monthSel.innerHTML = "";
+
+  // 年数分のオプションを追加
+  for (let y = 1; y <= years; y++) {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = `${y}年目`;
+    yearSel.appendChild(opt);
+  }
+
+  // 月は 1〜12月
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = `${m}月`;
+    monthSel.appendChild(opt);
+  }
+}
+
+// 初期化時に呼び出し
+document.addEventListener("DOMContentLoaded", () => {
+  rebuildMyPresetOptions();
+  populatePrepayDropdowns();   // ← これを追加
+});
+
+// 返済年数が変わったら再構築
+function syncYearsFromInput() {
+  const v = +document.getElementById("years").value;
+  document.getElementById("years-range").value = v;
+  generateRateInputs();
+  populatePrepayDropdowns();   // ← 追加
+}
+function syncYearsFromRange() {
+  const v = +document.getElementById("years-range").value;
+  document.getElementById("years").value = v;
+  generateRateInputs();
+  populatePrepayDropdowns();   // ← 追加
+}  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
