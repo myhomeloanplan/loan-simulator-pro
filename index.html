@@ -841,7 +841,7 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 });
 }
 
-/* ---------------- 返済シミュレーション本体 ---------------- */
+  /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value;
@@ -852,13 +852,13 @@ function simulate(){
   let balance = amount;
   let results = [];
 
-  // 月々返済額を計算する関数
+  // 毎月返済額を算出する関数（据え置き額を求める用）
   function calcPayment(principal, startMonth, remainMonths){
     let r = (rates[Math.floor(startMonth/6)]||0) / 100 / 12;
     return principal * r / (1 - Math.pow(1+r, -remainMonths));
   }
 
-  // 初期返済額
+  // 初期の毎月返済額（固定）
   let payment = calcPayment(balance, 0, months);
 
   for(let m=1; m<=months; m++){
@@ -876,27 +876,23 @@ function simulate(){
 
     prepayList.forEach(p=>{
       if(p.repeat==="none" && p.year===curYear && p.month===curMonth){
-        // 追加返済
+        // 追加返済を実行
         const pay = Math.min(p.amount, balance);
         balance -= pay;
         principal += pay;
         thisPayment += pay;
 
-        // 期間短縮型: 残高が減ったので残り期間を再計算
-        const remainMonths = months - m;
-        if(remainMonths > 0){
-          // 支払額は据え置きで「完済月を短縮」
-          let tmp = balance, newMonths = 0;
-          while(tmp > 0 && newMonths < 1000){
-            let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
-            let int2 = tmp * rr;
-            let prin2 = payment - int2;
-            if(prin2 <= 0) break;
-            tmp -= prin2;
-            newMonths++;
-          }
-          months = m + newMonths;
+        // 期間短縮型: 残り期間を再計算
+        let tmp = balance, newMonths = 0;
+        while(tmp > 0 && newMonths < 2000){
+          let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
+          let int2 = tmp * rr;
+          let prin2 = payment - int2;
+          if(prin2 <= 0) break; // 異常防止
+          tmp -= prin2;
+          newMonths++;
         }
+        months = m + newMonths; // 新しい完済月
       }
     });
 
