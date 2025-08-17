@@ -1451,7 +1451,9 @@ function drawCharts(data){
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: ctx => `${ctx.dataset.label}: ${ctx.raw.toLocaleString()} 円`
+    label: ctx => {
+      const val = Math.round(ctx.raw);   // ← 小数点を四捨五入
+      return `${ctx.dataset.label}: ${val.toLocaleString()} 円`;
         }
       }
     }
