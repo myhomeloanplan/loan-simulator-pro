@@ -719,6 +719,7 @@ function addPrepay(){
   const repeat = document.getElementById('prepayRepeat').value;
   if(amountMan<=0) return alert('金額を入力してください');
   const monthIndex = (y-1)*12 + (m-1); // 0-based
+  console.log('[addPrepay]', { y, m, monthIndex, amountYen: amountMan*10000, repeat });
   prepayEvents.push({
     id: Date.now(),
     mode,
@@ -754,19 +755,28 @@ function removePrepay(id){
   simulate();
 }
 
-/* ▼ 月番号mにヒットする繰上げ返済の合計を返す */
 function prepayAmountAtMonth(m){
   let sum = 0;
   for(const ev of prepayEvents){
     if(ev.repeat==='none'){
-      if(m===ev.monthIndex) sum += ev.amountYen;
+      if(m===ev.monthIndex){
+        console.log('[prepay hit]', { m, ev });
+        sum += ev.amountYen;
+      }
     }else if(ev.repeat==='yearly'){
-      if(m>=ev.monthIndex && (m-ev.monthIndex)%12===0) sum += ev.amountYen;
+      if(m>=ev.monthIndex && (m-ev.monthIndex)%12===0){
+        console.log('[prepay yearly hit]', { m, ev });
+        sum += ev.amountYen;
+      }
     }else if(ev.repeat==='bonus'){
       const mm = (m%12)+1;
-      if((mm===6 || mm===12) && m>=ev.monthIndex) sum += ev.amountYen;
+      if((mm===6 || mm===12) && m>=ev.monthIndex){
+        console.log('[prepay bonus hit]', { m, ev });
+        sum += ev.amountYen;
+      }
     }
   }
+  console.log('[prepayAmountAtMonth result]', { m, sum });
   return sum;
 }
 
