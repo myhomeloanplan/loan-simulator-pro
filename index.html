@@ -832,7 +832,6 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 
 /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
-  window.simulate = simulate;
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value;
   let months   = years * 12;
@@ -911,7 +910,7 @@ function simulate(){
   return results;
 }
 
-
+ window.simulate = simulate;
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
@@ -1378,16 +1377,17 @@ function drawCharts(data){
       }
     },
     plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-    label: ctx => {
-      const val = Math.round(ctx.raw);   // ← 小数点を四捨五入
-      return `${ctx.dataset.label}: ${val.toLocaleString()} 円`;
-        }
+  legend: { display: false },
+  tooltip: {
+    callbacks: {
+      label: ctx => {
+        const val = Math.round(ctx.raw);
+        return `${ctx.dataset.label}: ${val.toLocaleString()} 円`;
       }
-   }
-  };
+    }
+  }   // ★ 追加：tooltip を閉じる
+}     // plugins を閉じる
+};    // common を閉じる
 
   // --- 月々の支払額 ---
   paymentChart = new Chart(
