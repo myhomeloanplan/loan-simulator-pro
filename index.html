@@ -1017,13 +1017,15 @@ function simulate(){
   const result = [], payments = []; 
   let totalP = 0, totalI = 0;
 
-  let fixedOut = 0;        // 区間ごとの返済額（元利均等用）
+  let fixedOut = 0;        // 区間の返済額
   let currentSeg = -1;     // 金利セグメント管理
-  let remainMonths = months; // 残期間
+  let remainMonths = months; // ★動的に管理する残期間
 
   let m = 0;
   while(balance > 0 && remainMonths > 0){
-    // ▼ 月初に繰上げ返済
+    const r = (rates[Math.floor(m/6)]||0)/12; 
+
+    // ▼ 月初に繰上げ返済（期間短縮型）
     const pre = prepayAmountAtMonth(m);
     if(pre > 0){
       balance = Math.max(0, balance - pre);
@@ -1031,16 +1033,24 @@ function simulate(){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-      // ★残り月数を「現在の月数を基準に再計算」して短縮
+      // ★残り月数を更新（現在の月以降）
       remainMonths = months - m;
+
+      // ★繰上げ後に返済額を再計算（元利均等のみ）
+      if(repaymentType==='principalAndInterestEqual'){
+        if(r > 0){
+          fixedOut = balance * r * Math.pow(1+r, remainMonths) / (Math.pow(1+r, remainMonths) - 1);
+        }else{
+          fixedOut = balance / remainMonths;
+        }
+      }
     }
 
-    const r = (rates[Math.floor(m/6)]||0)/12; 
     let interest = balance * r, principal, out;
 
     if(repaymentType==='principalAndInterestEqual'){
       const seg = Math.floor(m/6);
-      // 金利セグメントが変わったら、その時点の残期間で再計算
+      // 金利セグメントが変わったら返済額を再計算
       if(seg !== currentSeg){
         currentSeg = seg;
         if(r > 0){
@@ -1051,12 +1061,9 @@ function simulate(){
       }
       out = fixedOut;
       principal = out - interest;
-      if(principal > balance){ 
-        principal = balance; 
-        // out は fixedOut を維持
-      }
+      if(principal > balance){ principal = balance; out = principal + interest; }
     }else{
-      // ★元金均等：繰上げや残高減少に合わせて再計算
+      // ★元金均等：残高÷残り月数で計算
       principal = balance / remainMonths;
       interest  = balance * r;
       out       = principal + interest;
