@@ -930,45 +930,82 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 
 /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
-const amount=parseAmount(document.getElementById('amount').value);
-const years=+document.getElementById('years').value, months=years*12;
-const repaymentType=document.querySelector("input[name='repaymentType']:checked").value;
-const rates=[...document.querySelectorAll('.half-rate-input')].map(el=>parseFloat(el.value)/100);
-if(!amount||!years) return alert('借入額と返済期間を入力してください。');
-if(rates.length<Math.ceil(months/6)) return alert('金利の入力が不足しています。');
+  const amount = parseAmount(document.getElementById('amount').value);
+  const years  = +document.getElementById('years').value, months = years * 12;
+  const repaymentType = document.querySelector("input[name='repaymentType']:checked").value;
+  const rates = [...document.querySelectorAll('.half-rate-input')].map(el => parseFloat(el.value)/100);
 
-let balance=amount; 
-const result=[], payments=[]; 
-let totalP=0,totalI=0;
+  if(!amount || !years) return alert('借入額と返済期間を入力してください。');
+  if(rates.length < Math.ceil(months/6)) return alert('金利の入力が不足しています。');
 
-for(let m=0;m<months;m++){
-// ▼ 月初に繰上げ返済（期間短縮型）を反映
-  const pre = prepayAmountAtMonth(m);  // 事前に追加した関数
-  if(pre > 0){
-    balance = Math.max(0, balance - pre);
-  }  
-const r=(rates[Math.floor(m/6)]||0)/12, remain=months-m;
-let interest=balance*r, principal, out;
-if(repaymentType==='principalAndInterestEqual'){
-out = r>0 ? balance*r*Math.pow(1+r,remain)/(Math.pow(1+r,remain)-1) : balance/remain;
-interest=balance*r; principal=out-interest;
-}else{
-principal=amount/months; interest=balance*r; out=principal+interest;
+  let balance = amount;
+  const result = [], payments = [];
+  let totalP = 0, totalI = 0;
+
+  for(let m = 0; m < months; m++){
+
+    // ▼ 月初に繰上げ返済（期間短縮型）を反映
+    let extraPrincipal = 0;
+    const pre = prepayAmountAtMonth(m) || 0;   // ← 事前追加の関数を利用
+    if(pre > 0){
+      extraPrincipal = Math.min(pre, balance);
+      balance = Math.max(0, balance - extraPrincipal);
+    }
+
+    // ▼ この月の金利・定例返済を計算（繰上げ後の残高に対して）
+    const r = (rates[Math.floor(m/6)] || 0) / 12;
+    const remain = months - m;
+
+    let interest = balance * r;
+    let principal, out;
+
+    if (repaymentType === 'principalAndInterestEqual'){
+      out = r > 0
+        ? balance * r * Math.pow(1+r, remain) / (Math.pow(1+r, remain) - 1)
+        : (remain > 0 ? balance / remain : balance);
+      interest  = balance * r;
+      principal = out - interest;
+    } else {
+      principal = amount / months;        // 元金均等：初期借入額で等分
+      interest  = balance * r;
+      out       = principal + interest;
+    }
+
+    // 数値誤差対策：定例元金が残高を超えないようにする
+    if(principal > balance) principal = balance;
+
+    // ▼ 残高を定例元金ぶん減らす
+    balance -= principal;
+    if(balance < 0) balance = 0;
+
+    // ▼ 今月の元金・支払額に繰上げ分を合算
+    const principalThisMonth = principal + extraPrincipal;
+    const paymentThisMonth   = out + extraPrincipal;
+
+    totalP += principalThisMonth;
+    totalI += interest;
+    payments.push(paymentThisMonth);
+
+    result.push({
+      月:     m + 1,
+      元金:   Math.round(principalThisMonth),
+      利息:   Math.round(interest),
+      残高:   Math.round(balance),
+      支払額: Math.round(paymentThisMonth)
+    });
+
+    // ▼ 完済なら早期終了
+    if(balance <= 0){
+      break;
+    }
+  }
+
+  lastSimData = result;
+  lastTotals  = { totalP, totalI, payments };
+  displayResult(result, totalP, totalI, payments);
+  drawCharts(result);
 }
-balance-=principal; if(balance<0) balance=0; 
-totalP+=principal; totalI+=interest; 
-payments.push(out);
 
-result.push({ 
-月:m+1, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round(out)
-});
-}
-
-lastSimData=result; 
-lastTotals = { totalP, totalI, payments };
-displayResult(result,totalP,totalI,payments); 
-drawCharts(result);
-}
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
