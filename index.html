@@ -1027,11 +1027,20 @@ function simulate(){
   const result = [], payments = []; 
   let totalP = 0, totalI = 0;
 
-  let fixedOut = 0;        // 区間の返済額
-  let currentSeg = -1;     // 金利セグメント管理
-  let remainMonths = months; // ★動的に管理する残期間
-
+  let fixedOut = 0;        // 元利均等の返済額（最初に決めて固定）
+  let remainMonths = months; // 残期間
   let m = 0;
+
+  // ▼ 返済額を最初に一度だけ計算（元利均等の場合）
+  if(repaymentType==='principalAndInterestEqual'){
+    const r0 = (rates[0] || 0) / 12;
+    if(r0 > 0){
+      fixedOut = amount * r0 * Math.pow(1+r0, months) / (Math.pow(1+r0, months) - 1);
+    } else {
+      fixedOut = amount / months;
+    }
+  }
+
   while(balance > 0 && remainMonths > 0){
     const r = (rates[Math.floor(m/6)]||0)/12; 
 
@@ -1039,25 +1048,23 @@ function simulate(){
     const pre = prepayAmountAtMonth(m);
     if(pre > 0){
       balance = Math.max(0, balance - pre);
-       totalP += pre;
+      totalP += pre;
       if(balance <= 0){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-     
     }
 
     let interest = balance * r, principal, out;
 
     if(repaymentType==='principalAndInterestEqual'){
-      const seg = Math.floor(m/6);
-      // 金利セグメントが変わったら返済額を再計算
-      if(seg !== currentSeg){
-        currentSeg = seg;
-      }
+      // ★返済額は最初に決めた fixedOut を常に使う
       out = fixedOut;
       principal = out - interest;
-      if(principal > balance){ principal = balance; out = principal + interest; }
+      if(principal > balance){ 
+        principal = balance; 
+        out = principal + interest; 
+      }
     }else{
       // ★元金均等：残高÷残り月数で計算
       principal = balance / remainMonths;
@@ -1092,7 +1099,6 @@ function simulate(){
   // ▼ 早期完済メッセージ
   updatePayoffBanner(result.length, months);
 }
-
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
