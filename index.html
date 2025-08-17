@@ -1054,11 +1054,6 @@ function simulate(){
       // 金利セグメントが変わったら返済額を再計算
       if(seg !== currentSeg){
         currentSeg = seg;
-        if(r > 0){
-          fixedOut = balance * r * Math.pow(1+r, remainMonths) / (Math.pow(1+r, remainMonths) - 1);
-        }else{
-          fixedOut = balance / remainMonths;
-        }
       }
       out = fixedOut;
       principal = out - interest;
