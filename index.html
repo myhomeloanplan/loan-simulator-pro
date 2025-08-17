@@ -986,7 +986,8 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 });
 }
 
-/* ---------------- 返済シミュレーション本体 ---------------- */
+
+/* ---------------- 返済シミュレーション本体（期間短縮型） ---------------- */
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value, months = years * 12;
@@ -996,55 +997,80 @@ function simulate(){
   if(!amount || !years) return alert('借入額と返済期間を入力してください。');
   if(rates.length < Math.ceil(months/6)) return alert('金利の入力が不足しています。');
 
-// ▼ 期間外の繰上げイベントを無視（安全網）
-  const __origEvents  = prepayEvents;                         // 退避
+  /* ▼ 期間外の繰上げイベントを無視（安全網） */
+  const __origEvents  = prepayEvents;
   const __validEvents = prepayEvents.filter(ev => ev.monthIndex < months);
-  prepayEvents = __validEvents;                               // 一時的に差し替え
-  
+  prepayEvents = __validEvents;
+
   let balance = amount;
   const result = [], payments = [];
   let totalP = 0, totalI = 0;
 
-  for(let m = 0; m < months; m++){
+  /* ▼ 元利均等の「固定返済額」を初月条件で決定（期間短縮型の肝） */
+  const r0 = (rates[0] || 0) / 12;
+  const fixedOutPIE = (repaymentType === 'principalAndInterestEqual')
+    ? (r0 > 0
+        ? amount * r0 * Math.pow(1 + r0, months) / (Math.pow(1 + r0, months) - 1)
+        : amount / months)
+    : null; // 元金均等は不要
 
-    // ▼ 月初に繰上げ返済（期間短縮型）を反映
+  for(let m = 0; m < months; m++){
+    /* ── 月初：繰上げ返済（期間短縮型）を残高から控除 ── */
     let extraPrincipal = 0;
-    const pre = prepayAmountAtMonth(m) || 0;   // ← 事前追加の関数を利用
+    const pre = prepayAmountAtMonth(m) || 0;
     if(pre > 0){
       extraPrincipal = Math.min(pre, balance);
       balance = Math.max(0, balance - extraPrincipal);
     }
 
-    // ▼ この月の金利・定例返済を計算（繰上げ後の残高に対して）
-    const r = (rates[Math.floor(m/6)] || 0) / 12;
-    const remain = months - m;
-
-    let interest = balance * r;
-    let principal, out;
-
-    if (repaymentType === 'principalAndInterestEqual'){
-      out = r > 0
-        ? balance * r * Math.pow(1+r, remain) / (Math.pow(1+r, remain) - 1)
-        : (remain > 0 ? balance / remain : balance);
-      interest  = balance * r;
-      principal = out - interest;
-    } else {
-      principal = amount / months;        // 元金均等：初期借入額で等分
-      interest  = balance * r;
-      out       = principal + interest;
+    /* 完済直後に抜ける（繰上げだけで終わるケース） */
+    if(balance <= 0){
+      // この月の定例支払はゼロ、繰上げだけで完済
+      totalP += extraPrincipal;
+      payments.push(extraPrincipal);
+      result.push({
+        月: m + 1,
+        元金: Math.round(extraPrincipal),
+        利息: 0,
+        残高: 0,
+        支払額: Math.round(extraPrincipal)
+      });
+      break;
     }
 
-    // 数値誤差対策：定例元金が残高を超えないようにする
-   if (principal > balance) {
-  principal = balance;
-  out = principal + interest; // 最終月は定例 out を上書き
-}
+    /* ── 当月金利・定例返済 ── */
+    const r = (rates[Math.floor(m/6)] || 0) / 12;
+    const interest = balance * r;
+    let principal = 0;
+    let out = 0;
 
-    // ▼ 残高を定例元金ぶん減らす
+    if (repaymentType === 'principalAndInterestEqual'){
+      // 期間短縮型：毎月の返済額は固定（初月条件で決めた fixedOutPIE）
+      out = fixedOutPIE;
+
+      // 安全網：利息が固定額を超えると負債が増えるので、利息分は必ず支払う
+      if (out < interest) out = interest;
+
+      principal = out - interest;
+
+      // 最終月：固定額よりも「残高＋利息」が小さいなら、そこで完済
+      const cap = balance + interest;
+      if (out > cap){
+        out = cap;
+        principal = balance; // すべて元金へ
+      }
+    } else {
+      // 元金均等：初期借入額を総月数で等分（既存ロジックのまま）
+      principal = amount / months;
+      if (principal > balance) principal = balance; // 最終調整
+      out = principal + interest;
+    }
+
+    // 残高更新
     balance -= principal;
-    if(balance < 0) balance = 0;
+    if (balance < 0) balance = 0;
 
-    // ▼ 今月の元金・支払額に繰上げ分を合算
+    // 集計（繰上げ分を合算）
     const principalThisMonth = principal + extraPrincipal;
     const paymentThisMonth   = out + extraPrincipal;
 
@@ -1060,16 +1086,17 @@ function simulate(){
       支払額: Math.round(paymentThisMonth)
     });
 
-    // ▼ 完済なら早期終了
-    if(balance <= 0){
-      break;
-    }
+    // 完済で終了（＝期間短縮）
+    if (balance <= 0) break;
   }
 
   lastSimData = result;
   lastTotals  = { totalP, totalI, payments };
   displayResult(result, totalP, totalI, payments);
   drawCharts(result);
+
+  /* 片付け */
+  prepayEvents = __origEvents;
 }
 
 
