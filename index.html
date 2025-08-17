@@ -607,7 +607,21 @@ border-top-color: rgba(255,255,255,0.08);
 
 <!-- =============== 結果表示カード =============== -->
 <div class="card">
-<div class="panel-title"><span class="chip">2</span>シミュレーション結果</div>
+  <div class="panel-title">
+    <span class="chip">2</span>シミュレーション結果
+  </div>
+
+  <table>
+    <tr>
+      <th>総返済額</th>
+      <td id="totalPaymentCell"></td>
+    </tr>
+    <tr>
+      <th>利息合計</th>
+      <td id="totalInterestCell"></td>
+    </tr>
+  </table>
+</div>
 
 <!-- まとめパネル -->
 <section class="summary-panel" aria-label="シミュレーション結果サマリー">
@@ -1098,8 +1112,9 @@ function simulate(){
   }
 
   // 表示更新
-  document.getElementById('totalPayment').textContent = formatYen(Math.ceil(totalPayment));
-  document.getElementById('totalInterest').textContent = formatYen(Math.ceil(totalInterest));
+document.getElementById('totalPaymentCell').textContent = formatYen(Math.ceil(totalPayment));
+document.getElementById('totalInterestCell').textContent = formatYen(Math.ceil(totalInterest));
+
 }
 
 
