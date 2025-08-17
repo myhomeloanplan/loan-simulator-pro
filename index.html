@@ -882,28 +882,23 @@ function simulate(){
 
     prepayList.forEach(p=>{
       if(p.repeat==="none" && p.year===curYear && p.month===curMonth){
-        // 追加返済
+        // 追加返済を実行
         const pay = Math.min(p.amount, balance);
         balance -= pay;
         principal += pay;
         thisPayment += pay;
 
-        // 期間短縮型: 残高減少後に返済額を再計算
-        const remainMonths = months - m;
-        if(remainMonths > 0){
-          payment = calcPayment(balance, m, remainMonths);
-          // 完済月を短縮（balanceに応じてmonthsを詰める）
-          let tmp = balance, newMonths = 0;
-          while(tmp > 0 && newMonths < 2000){
-            let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
-            let int2 = tmp * rr;
-            let prin2 = payment - int2;
-            if(prin2 <= 0) break;
-            tmp -= prin2;
-            newMonths++;
-          }
-          months = m + newMonths;
+        // 期間短縮型: 支払額は据え置きで残り期間だけ短縮する
+        let tmp = balance, newMonths = 0;
+        while(tmp > 0 && newMonths < 2000){
+          let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
+          let int2 = tmp * rr;
+          let prin2 = payment - int2;
+          if(prin2 <= 0) break;
+          tmp -= prin2;
+          newMonths++;
         }
+        months = m + newMonths;  // 完済月を更新
       }
     });
 
@@ -925,6 +920,7 @@ function simulate(){
 
   return results;
 }
+
 
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
