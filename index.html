@@ -1004,7 +1004,6 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 }
 
 /* ---------------- 返済シミュレーション本体 ---------------- */
-/* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
   const amount = parseAmount(document.getElementById('amount').value);
   const years  = +document.getElementById('years').value, months = years * 12;
@@ -1018,7 +1017,7 @@ function simulate(){
   const result = [], payments = []; 
   let totalP = 0, totalI = 0;
 
-  let fixedOut = 0;        // 区間ごとの返済額
+  let fixedOut = 0;        // 区間ごとの返済額（元利均等用）
   let currentSeg = -1;     // 金利セグメント管理
   let remainMonths = months; // 残期間
 
@@ -1032,7 +1031,8 @@ function simulate(){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
       }
-      // ★毎月返済額は据え置き
+      // ★残り月数を「現在の月数を基準に再計算」して短縮
+      remainMonths = months - m;
     }
 
     const r = (rates[Math.floor(m/6)]||0)/12; 
@@ -1053,10 +1053,11 @@ function simulate(){
       principal = out - interest;
       if(principal > balance){ 
         principal = balance; 
-        // out は fixedOut のまま維持！
+        // out は fixedOut を維持
       }
     }else{
-      principal = amount / months;
+      // ★元金均等：繰上げや残高減少に合わせて再計算
+      principal = balance / remainMonths;
       interest  = balance * r;
       out       = principal + interest;
     }
