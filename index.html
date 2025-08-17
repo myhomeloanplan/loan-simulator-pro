@@ -454,6 +454,13 @@ border-top-color: rgba(255,255,255,0.08);
     justify-content: center;
   }
 }  
+.section-title[onclick]{
+  user-select: none;
+}
+.section-title[onclick]:hover{
+  background-color: rgba(0,0,0,0.05);
+  border-radius: 6px;
+}
 </style>
 </head>
 
@@ -493,8 +500,10 @@ border-top-color: rgba(255,255,255,0.08);
 <input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
 
 <!-- ▼ 繰上げ返済（任意） -->
-<div class="section-title">繰上げ返済（任意）</div>
-<div class="card" style="padding:12px;">
+<div class="section-title" style="cursor:pointer;" onclick="togglePrepay()">
+  ▸ 繰上げ返済（任意）
+</div>
+<div class="card" id="prepayCard" style="padding:12px; display:none;">
   <div class="inline-group prepay-controls">
   <input type="hidden" id="prepayMode" value="shorten">
     <label>いつ
@@ -1434,6 +1443,16 @@ function deleteSelectedMyPreset(){
 document.addEventListener('DOMContentLoaded', () => {
   rebuildMyPresetOptions();
 });  
+function togglePrepay(){
+  const card = document.getElementById('prepayCard');
+  const title = document.querySelector('.section-title[onclick="togglePrepay()"]');
+  if(!card || !title) return;
+  const isHidden = card.style.display === 'none';
+  card.style.display = isHidden ? 'block' : 'none';
+  // 見出しの ▸ / ▼ を切り替え
+  title.textContent = (isHidden ? '▼' : '▸') + ' 繰上げ返済（任意）';
+}
+  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
