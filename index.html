@@ -1039,6 +1039,7 @@ function simulate(){
     const pre = prepayAmountAtMonth(m);
     if(pre > 0){
       balance = Math.max(0, balance - pre);
+       totalP += pre;
       if(balance <= 0){
         result.push({月:m+1, 元金:0, 利息:0, 残高:0, 支払額:0});
         break;
