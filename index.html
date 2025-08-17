@@ -1001,9 +1001,7 @@ plugins: {
   tooltip: {
     callbacks: {
       label: function(context){
-        // parsed.y があればそれを、なければ raw を使う
-        const rawValue = context.parsed.y ?? context.raw;
-        const val = Math.round(rawValue);
+        const val = Math.floor(context.parsed.y); 
         return context.dataset.label + ': ' + val.toLocaleString() + ' 円';
       }
     }
