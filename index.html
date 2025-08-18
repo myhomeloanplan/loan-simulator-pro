@@ -315,7 +315,7 @@ font-size: 0.95rem;
 font-weight: 600;
 color: #555;
 margin: 0 0 6px 0;
-border-left: 4px solid #0c7e72; /* アクセントライン */
+border-left: 4px solid #0c7e72;; /* アクセントライン */
 padding-left: 6px;
 }
 .preset-title {
@@ -401,13 +401,11 @@ border-top-color: rgba(255,255,255,0.08);
 @media (max-width:640px){
   .my-presets-row{ grid-template-columns: 1fr; }
 }
-
-/* ===== 繰上げ返済フォームのUI整形 ===== */ 
-  .prepay-controls{ align-items: flex-start; /* ← 上揃えに */ row-gap: 12px; /* 行間を少し広げる（任意） */ } .prepay-controls label{ display: flex; flex-direction: column; /* ラベル → コントロールを縦積み */ gap: 6px; font-weight: 700; /* ラベルを少し強調（任意） */ color: var(--navy); } .prepay-controls input, .prepay-controls select{ width: 14rem; /* 横幅を適度に統一（任意で調整） */ max-width: 100%; } /* 追加ボタンも上揃えに */ .prepay-controls .btn-compact{ align-self: flex-start; /* ← ボタンを上揃え */ margin-top: 28px; /* ラベルの分だけ下げて行頭を揃える（好みで調整） */ } /* ▼ プルダウンの見た目を既存の scope-field と同じに */ .prepay-controls select{ -webkit-appearance:none; appearance:none; height: 44px; padding: 0 .7rem; padding-right: 2em; /* ▼分の余白 */ border-radius: 12px; border: 1px solid #dfe8f2; background: #fff url("data:image/svg+xml,%3Csvg fill='%230c7e86' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 0.6em center; background-size: 1em; font-size: 1rem; font-weight: 700; cursor: pointer; } /* スマホでの最適化 */ @media (max-width: 640px){ .prepay-controls input, .prepay-controls select{ width: 100%; } .prepay-controls .btn-compact{ margin-top: 4px; /* モバイルは詰める */ width: 100%; justify-content: center; } } .section-title[onclick]{ user-select: none; } .section-title[onclick]:hover{ background-color: rgba(0,0,0,0.05); border-radius: 6px; }
   
 </style>
 </head>
-<body>  
+
+<body onload="generateRateInputs()">
 <div class="title-wrap">
 <div class="subtitle">半年ごとに金利を変更できる</div>
     <h1 class="title">
@@ -442,44 +440,6 @@ border-top-color: rgba(255,255,255,0.08);
 <div class="section-title">諸費用（万円・現金払い）</div>
 <input type="text" id="miscCost" value="0" oninput="syncMiscFromText()" />
 
-<!-- ▼ 繰上げ返済（任意） -->
-<div class="section-title" style="cursor:pointer;" onclick="togglePrepay()">
-  <span id="prepayToggleMark">▶︎</span> 繰り上げ返済（任意）※期間短縮型
-</div>
-<div class="card" id="prepayCard" style="padding:12px; display:none;">
-  <div class="inline-group prepay-controls">
-    <input type="hidden" id="prepayMode" value="shorten">
-    <label>いつ
-      <select id="prepayYear"></select>
-      <select id="prepayMonth"></select>
-    </label>
-    <label>金額（万円）
-      <input type="number" id="prepayAmount" step="10" value="100" />
-    </label>
-    <label>繰り返し
-      <select id="prepayRepeat">
-        <option value="none" selected>単発</option>
-        <!-- 今回は単発のみ有効 -->
-      </select>
-    </label>
-    <button type="button" class="btn btn-compact" onclick="addPrepay()">＋ 追加</button>
-  </div>
-
-  <table id="prepayTable" style="margin-top:10px; width:100%; font-size:0.9rem;">
-    <thead>
-      <tr>
-        <th style="text-align:left;">名称</th>
-        <th>方式</th>
-        <th>タイミング</th>
-        <th>金額(万円)</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-  
 <!-- 金利 -->
 <div class="section-title">金利（％）</div>
 
@@ -643,84 +603,75 @@ const raw = document.getElementById('miscCost').value.replace(/[^\d]/g,'');
 const n = parseInt(raw||'0',10);
 document.getElementById('miscCost').value = n.toLocaleString();
 }
+function syncYearsFromRange(){ 
+const v=+document.getElementById('years-range').value; 
+document.getElementById('years').value=v; 
+generateRateInputs();
+}
+function syncYearsFromInput(){ 
+const v=+document.getElementById('years').value; 
+document.getElementById('years-range').value=v; 
+generateRateInputs();
+}
 
 /* ---------------- 金利入力欄の生成 ---------------- */
 function generateRateInputs(){
-  const container = document.getElementById('rate-inputs'); 
+const container=document.getElementById('rate-inputs'); 
+container.innerHTML='';
+const years=+document.getElementById('years').value;
 
-  // ★ いまの半期金利を退避（初回=未生成なら null）
-  const hasInputs = !!document.querySelector('.half-rate-input');
-  const prevRates = hasInputs ? getCurrentHalfRates() : null;
-
-  container.innerHTML = '';
-  const years = +document.getElementById('years').value;
-
-  // 適用範囲プルダウン
-  const scope = document.getElementById('applyScope');
-  scope.innerHTML = '';
-  const optAll = document.createElement('option');
-  optAll.value = 'all'; optAll.textContent = '全期間';
-  scope.appendChild(optAll);
-  for(let y=2; y<=years; y++){
-    const o = document.createElement('option');
-    o.value = String(y);
-    o.textContent = `${y}年目以降`;
-    scope.appendChild(o);
-  }
-
-  // 見出し行（前半/後半）
-  const head = document.createElement('div');
-  head.className = 'rate-input-head';
-  const stub = document.createElement('span'); stub.className = 'col-year';
-  const h1 = document.createElement('span'); h1.className = 'col-half'; h1.textContent = '前半';
-  const h2 = document.createElement('span'); h2.className = 'col-half'; h2.textContent = '後半';
-  head.append(stub, h1, h2);
-  container.appendChild(head);
-
-  // 半年ごと入力
-  for(let y=1; y<=years; y++){
-    const row = document.createElement('div');
-    row.className = 'rate-input-row';
-    const label = document.createElement('span');
-    label.textContent = `${y}年目`;
-
-    const input1 = document.createElement('input');
-    const input2 = document.createElement('input');
-
-    [input1,input2].forEach((inp,i)=>{
-      inp.type='number';
-      inp.step='0.01';
-      inp.value='1.00'; // デフォルト（後で復元で上書き）
-      inp.className='rate-input half-rate-input';
-      inp.dataset.index=(y-1)*2+i;
-      inp.addEventListener('input', updateRateChartFromInputs);
-    });
-
-    row.append(label, input1, input2);
-    container.appendChild(row);
-  }
-
-  // ★ 退避しておいた金利を復元（長さ変更に対応）
-  if (prevRates && prevRates.length){
-    const need = years * 2;
-    const restored = prevRates.slice(0, need);
-    while (restored.length < need){
-      restored.push(restored[restored.length - 1] ?? 1.00);
-    }
-    const inputs = [...document.querySelectorAll('.half-rate-input')];
-    restored.forEach((v,i)=>{ if(inputs[i]) inputs[i].value = Number(v).toFixed(2); });
-  }
-
-  // グラフ再描画＆セレクト再構築
-  drawRateChart();
-  rebuildMyPresetOptions();
-
-  // ★ 値を復元した場合は即再計算
-  if (prevRates && prevRates.length){
-    simulate();
-  }
+// 適用範囲プルダウン
+const scope=document.getElementById('applyScope'); 
+scope.innerHTML='';
+const optAll=document.createElement('option'); 
+optAll.value='all'; optAll.textContent='全期間'; 
+scope.appendChild(optAll);
+for(let y=2;y<=years;y++){
+const o=document.createElement('option'); 
+o.value=String(y); 
+o.textContent=`${y}年目以降`; 
+scope.appendChild(o); 
 }
 
+// ▼ 追加：見出し行（前半/後半）
+const head = document.createElement('div');
+head.className = 'rate-input-head';
+const stub = document.createElement('span');  // 左端：年ラベルと幅を合わせるダミー
+stub.className = 'col-year';
+const h1 = document.createElement('span'); h1.className = 'col-half'; h1.textContent = '前半';
+const h2 = document.createElement('span'); h2.className = 'col-half'; h2.textContent = '後半';
+head.append(stub, h1, h2);
+container.appendChild(head);
+
+// 半年ごと入力
+for(let y=1;y<=years;y++){
+const row=document.createElement('div'); 
+row.className='rate-input-row';
+const label=document.createElement('span'); 
+label.textContent=`${y}年目`;
+
+const input1=document.createElement('input'); 
+const input2=document.createElement('input');
+
+[input1,input2].forEach((inp,i)=>{
+inp.type='number'; 
+inp.step='0.01'; 
+inp.value='1.00';
+inp.className='rate-input half-rate-input';
+inp.dataset.index=(y-1)*2+i;
+inp.addEventListener('input',updateRateChartFromInputs);
+});
+
+row.appendChild(label); 
+row.appendChild(input1); 
+row.appendChild(input2); 
+container.appendChild(row);
+}
+
+// 初期描画
+drawRateChart();
+rebuildMyPresetOptions();
+}
 
 /* ---------------- 入力欄 → グラフ更新 ---------------- */
 function updateRateChartFromInputs(){
@@ -851,85 +802,40 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 
 /* ---------------- 返済シミュレーション本体 ---------------- */
 function simulate(){
-  const amount = parseAmount(document.getElementById('amount').value);
-  const years  = +document.getElementById('years').value;
-  let months   = years * 12;
-  const rates  = [...document.querySelectorAll('.half-rate-input')]
-                   .map(el => parseFloat(el.value) || 0);
+const amount=parseAmount(document.getElementById('amount').value);
+const years=+document.getElementById('years').value, months=years*12;
+const repaymentType=document.querySelector("input[name='repaymentType']:checked").value;
+const rates=[...document.querySelectorAll('.half-rate-input')].map(el=>parseFloat(el.value)/100);
+if(!amount||!years) return alert('借入額と返済期間を入力してください。');
+if(rates.length<Math.ceil(months/6)) return alert('金利の入力が不足しています。');
 
-  let balance = amount;
-  let results = [];
+let balance=amount; 
+const result=[], payments=[]; 
+let totalP=0,totalI=0;
 
-  // 毎月返済額を計算する関数
-  function calcPayment(principal, startMonth, remainMonths){
-    let r = (rates[Math.floor(startMonth/6)]||0) / 100 / 12;
-    if(r === 0) return principal / remainMonths;
-    return principal * r / (1 - Math.pow(1+r, -remainMonths));
-  }
+for(let m=0;m<months;m++){
+const r=(rates[Math.floor(m/6)]||0)/12, remain=months-m;
+let interest=balance*r, principal, out;
+if(repaymentType==='principalAndInterestEqual'){
+out = r>0 ? balance*r*Math.pow(1+r,remain)/(Math.pow(1+r,remain)-1) : balance/remain;
+interest=balance*r; principal=out-interest;
+}else{
+principal=amount/months; interest=balance*r; out=principal+interest;
+}
+balance-=principal; if(balance<0) balance=0; 
+totalP+=principal; totalI+=interest; 
+payments.push(out);
 
-  // 初回返済額
-  let payment = calcPayment(balance, 0, months);
-
-  for(let m=1; m<=months; m++){
-    // ★ 金利変動チェック（半年ごとに再計算）
-    if(m > 1 && (m-1) % 6 === 0){
-      payment = calcPayment(balance, m-1, months - (m-1));
-    }
-
-    let r = (rates[Math.floor((m-1)/6)]||0) / 100 / 12;
-    let interest = balance * r;
-    let principal = payment - interest;
-    if(principal < 0) principal = 0;
-
-    balance -= principal;
-    let thisPayment = payment;
-
-    // ★ 繰上げ返済チェック
-    let curYear  = Math.floor((m-1)/12) + 1;
-    let curMonth = ((m-1)%12) + 1;
-
-    prepayList.forEach(p=>{
-      if(p.repeat==="none" && p.year===curYear && p.month===curMonth){
-        // 追加返済を実行
-        const pay = Math.min(p.amount, balance);
-        balance -= pay;
-        principal += pay;
-        thisPayment += pay;
-
-        // 期間短縮型: 支払額は据え置きで残り期間だけ短縮する
-        let tmp = balance, newMonths = 0;
-        while(tmp > 0 && newMonths < 2000){
-          let rr = (rates[Math.floor((m+newMonths)/6)]||0) / 100 / 12;
-          let int2 = tmp * rr;
-          let prin2 = payment - int2;
-          if(prin2 <= 0) break;
-          tmp -= prin2;
-          newMonths++;
-        }
-        months = m + newMonths;  // 完済月を更新
-      }
-    });
-
-    results.push({month:m, payment:thisPayment, interest, principal, balance});
-    if(balance <= 0) break;
-  }
-
-  // 利息合計と支払配列を集計
-  const totalInterest = results.reduce((sum,r)=> sum + r.interest, 0);
-  const payments = results.map(r=> r.payment);
-
-  // グローバルに保持
-  lastSimData = results;
-  lastTotals  = { totalP: amount, totalI: totalInterest, payments };
-
-  // 表示更新
-  displayResult(results, amount, totalInterest, payments);
-  drawCharts(results);
-
-  return results;
+result.push({ 
+月:m+1, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round(out)
+});
 }
 
- window.simulate = simulate;
+lastSimData=result; 
+lastTotals = { totalP, totalI, payments };
+displayResult(result,totalP,totalI,payments); 
+drawCharts(result);
+}
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
@@ -961,31 +867,66 @@ legacy.textContent = `🏁 総支払額（諸費用含む）: ${totalRepay.toLoc
 const show=document.getElementById('toggle-table').checked;
 const wrap=document.getElementById('repayment-table');
 wrap.innerHTML='';
-if (show) {
-  const table = document.createElement('table'),
-        thead = table.createTHead(),
-        tbody = table.createTBody();
-
-  thead.innerHTML =
-    '<tr><th>月</th><th>元金</th><th>利息</th><th>支払額</th><th>残高</th></tr>';
-
-  for (const row of data) {
-    const tr = tbody.insertRow();
-    const cells = [
-      row.month,      // 月
-      row.principal,  // 元金
-      row.interest,   // 利息
-      row.payment,    // 支払額
-      row.balance     // 残高
-    ];
-    for (const val of cells) {
-      const td = tr.insertCell();
-      td.textContent = Math.round(val).toLocaleString();
-      td.style.textAlign = 'right';
-    }
-  }
-  wrap.appendChild(table);
+if(show){
+const table=document.createElement('table'), thead=table.createTHead(), tbody=table.createTBody();
+thead.innerHTML='<tr><th>月</th><th>元金</th><th>利息</th><th>支払額</th><th>残高</th></tr>';
+for(const row of data){
+const tr=tbody.insertRow();
+for(const k of ['月','元金','利息','支払額','残高']){
+const td=tr.insertCell();
+td.textContent=row[k].toLocaleString();
+td.style.textAlign='right';
 }
+}
+wrap.appendChild(table);
+}
+}
+
+/* ---------------- グラフ描画（支払額/内訳） ---------------- */
+function drawCharts(data){
+const labels=data.map(d=>d['月']), 
+principal=data.map(d=>d['元金']), 
+interest=data.map(d=>d['利息']), 
+payment=data.map(d=>d['支払額']);
+
+if(paymentChart) paymentChart.destroy(); 
+if(stackedChart) stackedChart.destroy();
+
+const axisFont = { size:13 },
+common = {
+responsive: true,
+maintainAspectRatio: false,
+animation: false,
+scales: {
+x: {
+title: { display: true, text: '何年目', color: '#0e2a47', font: { weight: 'bold' } },
+ticks: {
+maxRotation: 0,
+autoSkip: false,
+font: axisFont,
+callback: (value, index) => (index % 12 === 0) ? (Math.floor(index / 12) + 1) : ''
+},
+grid: { display: false }
+},
+y: { ticks: { font: axisFont }, grid: { color: 'rgba(0,0,0,.08)' }, beginAtZero: true, min: 0 }
+},
+plugins: { legend: { display: false } }
+};
+
+paymentChart=new Chart(document.getElementById('paymentChart').getContext('2d'),{
+type:'bar', 
+data:{labels,datasets:[{label:'月々の支払額',data:payment,backgroundColor:'#0c7e86'}]}, 
+options:common 
+});
+
+stackedChart=new Chart(document.getElementById('stackedChart').getContext('2d'),{
+type:'bar', 
+data:{labels,datasets:[
+{label:'元金',data:principal,backgroundColor:'#0c7e86'},
+{label:'利息',data:interest,backgroundColor:'#ffbf3a'}
+]},
+options:{...common, scales:{...common.scales, x:{...common.scales.x,stacked:true}, y:{...common.scales.y,stacked:true}}} 
+});
 }
 
 /* ---------------- Excel出力 ---------------- */
@@ -1000,7 +941,7 @@ XLSX.writeFile(wb,'loan_simulation.xlsx');
 document.addEventListener('change', e => {
 if (e.target && e.target.id === 'toggle-table' && lastSimData.length) {
 // 丸め済み明細から再集計せず、未丸めの合計を使って描画
-const fallbackPays = lastSimData.map(r => r.payment);
+const fallbackPays = lastSimData.map(r => r['支払額']);
 const { totalP, totalI, payments } = lastTotals || { totalP: 0, totalI: 0, payments: fallbackPays };
 displayResult(lastSimData, totalP, totalI, payments);
 }
@@ -1272,194 +1213,10 @@ function deleteSelectedMyPreset(){
   rebuildMyPresetOptions();
   sel.value = '';
 }
-
-// 繰上げ返済「いつ」のプルダウンを初期化
-function populatePrepayDropdowns() {
-  const years = +document.getElementById("years").value; // 返済年数を取得
-  const yearSel = document.getElementById("prepayYear");
-  const monthSel = document.getElementById("prepayMonth");
-
-  yearSel.innerHTML = "";
-  monthSel.innerHTML = "";
-
-  // 年数分のオプションを追加
-  for (let y = 1; y <= years; y++) {
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = `${y}年目`;
-    yearSel.appendChild(opt);
-  }
-
-  // 月は 1〜12月
-  for (let m = 1; m <= 12; m++) {
-    const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = `${m}月`;
-    monthSel.appendChild(opt);
-  }
-}
-
-// 返済年数が変わったら再構築
-function syncYearsFromInput() {
-  const v = +document.getElementById("years").value;
-  document.getElementById("years-range").value = v;
-  generateRateInputs();
-  populatePrepayDropdowns();   // ← 追加
-}
-function syncYearsFromRange() {
-  const v = +document.getElementById("years-range").value;
-  document.getElementById("years").value = v;
-  generateRateInputs();
-  populatePrepayDropdowns();   // ← 追加
-}
-function togglePrepay(){
-  const card = document.getElementById('prepayCard');
-  const mark = document.getElementById('prepayToggleMark');
-  if(!card || !mark) return;
-  const isHidden = card.style.display === 'none';
-  card.style.display = isHidden ? 'block' : 'none';
-  // ▶︎ / ▼ の部分だけ更新
-  mark.textContent = isHidden ? '▼' : '▶︎';
-}
-  
-let prepayList = []; // 繰上げ返済リスト
-
-function addPrepay(){
-  const year  = +document.getElementById('prepayYear').value;
-  const month = +document.getElementById('prepayMonth').value;
-  const amount= parseAmount(document.getElementById('prepayAmount').value);
-  const repeat= document.getElementById('prepayRepeat').value;
-
-  const item = {
-    year, month, amount, repeat, mode:"shorten"
-  };
-  prepayList.push(item);
-  renderPrepayTable();
-}
-
-function removePrepay(idx){
-  prepayList.splice(idx,1);
-  renderPrepayTable();
-}
-
-function renderPrepayTable(){
-  const tbody = document.querySelector("#prepayTable tbody");
-  tbody.innerHTML = "";
-  prepayList.forEach((p,idx)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>繰上げ${idx+1}</td>
-      <td>${p.mode==="shorten"?"期間短縮":"軽減"}</td>
-      <td>${p.year}年${p.month}月</td>
-      <td>${formatYen(p.amount)}</td>
-      <td><button onclick="removePrepay(${idx})">削除</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-function formatYen(v){
-  return (v/10000).toLocaleString()+" 万円"; // 万円表記
-}  
-
-/* ---------------- グラフ描画（支払額/内訳） ---------------- */
-function drawCharts(data){
-  const labels   = data.map(d => d.month);        // ← 修正
-  const principal= data.map(d => d.principal);    // ← 修正
-  const interest = data.map(d => d.interest);     // ← 修正
-  const payment  = data.map(d => d.payment);      // ← 修正
-
-  if(paymentChart) paymentChart.destroy(); 
-  if(stackedChart) stackedChart.destroy();
-
-  const axisFont = { size:13 };
-  const common = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    scales: {
-      x: {
-        title: { display: true, text: '何年目', color: '#0e2a47', font: { weight: 'bold' } },
-        ticks: {
-          maxRotation: 0,
-          autoSkip: false,
-          font: axisFont,
-          callback: (value, index) =>
-            (index % 12 === 0) ? (Math.floor(index / 12) + 1) : ''
-        },
-        grid: { display: false }
-      },
-      y: {
-        ticks: { font: axisFont },
-        grid: { color: 'rgba(0,0,0,.08)' },
-        beginAtZero: true,
-        min: 0
-      }
-    },
-    plugins: {
-  legend: { display: false },
-  tooltip: {
-    callbacks: {
-      label: ctx => {
-        const val = Math.round(ctx.raw);
-        return `${ctx.dataset.label}: ${val.toLocaleString()} 円`;
-      }
-    }
-  }   // ★ 追加：tooltip を閉じる
-}     // plugins を閉じる
-};    // common を閉じる
-
-  // --- 月々の支払額 ---
-  paymentChart = new Chart(
-    document.getElementById('paymentChart').getContext('2d'),
-    {
-      type:'bar',
-      data:{
-        labels,
-        datasets:[{
-          label:'月々の支払額',
-          data:payment,
-          backgroundColor:'#0c7e86'
-        }]
-      },
-      options: common
-    }
-  );
-
-  // --- 元金/利息の内訳 ---
-  stackedChart = new Chart(
-    document.getElementById('stackedChart').getContext('2d'),
-    {
-      type:'bar',
-      data:{
-        labels,
-        datasets:[
-          {label:'元金', data:principal, backgroundColor:'#0c7e86'},
-          {label:'利息', data:interest, backgroundColor:'#ffbf3a'}
-        ]
-      },
-      options:{
-        ...common,
-        scales:{
-          ...common.scales,
-          x:{...common.scales.x, stacked:true},
-          y:{...common.scales.y, stacked:true}
-        },
-        plugins:{
-          ...common.plugins,
-          legend:{ display:true, position:'top' }
-        }
-      }
-    }
-  );
-}
-
-  // 初期化はこの1本だけに統一
-window.addEventListener('DOMContentLoaded', () => {
-  generateRateInputs();       // 半年入力欄とレートグラフを初期生成
-  rebuildMyPresetOptions();   // マイプリセットのセレクトを構築
-  populatePrepayDropdowns();  // 繰上げ返済の年・月プルダウン
-});
-  
+/* ===== 初期化：マイプリセットの選択肢を作る ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  rebuildMyPresetOptions();
+});  
 </script>
 <!-- ===== フッター（コピーライト） ===== -->
 <footer class="site-footer">
