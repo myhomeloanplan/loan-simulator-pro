@@ -604,14 +604,36 @@ const n = parseInt(raw||'0',10);
 document.getElementById('miscCost').value = n.toLocaleString();
 }
 function syncYearsFromRange(){ 
-const v=+document.getElementById('years-range').value; 
-document.getElementById('years').value=v; 
-generateRateInputs();
+  // ★ 現在の半年ごとの金利を退避
+  const prevRates = getCurrentHalfRates();  // 例: [1.00, 1.00, 1.25, ...]（％）
+
+  const v = +document.getElementById('years-range').value; 
+  document.getElementById('years').value = v; 
+
+  // 入力欄を再生成（いったん 1.00% が入る）
+  generateRateInputs();
+
+  // ★ 退避した金利を新しい期間長に合わせて復元
+  //    (短くなれば切り詰め、長くなれば末尾の値で埋め足し)
+  if (prevRates && prevRates.length) {
+    setHalfYearRates(prevRates);
+  }
 }
+  
 function syncYearsFromInput(){ 
-const v=+document.getElementById('years').value; 
-document.getElementById('years-range').value=v; 
-generateRateInputs();
+  // ★ 現在の半年ごとの金利を退避
+  const prevRates = getCurrentHalfRates();
+
+  const v = +document.getElementById('years').value; 
+  document.getElementById('years-range').value = v; 
+
+  // 入力欄を再生成
+  generateRateInputs();
+
+  // ★ 金利を復元
+  if (prevRates && prevRates.length) {
+    setHalfYearRates(prevRates);
+  }
 }
 
 /* ---------------- 金利入力欄の生成 ---------------- */
