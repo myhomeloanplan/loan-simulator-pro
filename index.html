@@ -849,7 +849,7 @@ totalP+=principal; totalI+=interest;
 payments.push(out);
 
 result.push({ 
-月:m+1, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round(out)
+月:m+1, '金利（％）': ratePct, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round(out)
 });
 }
 
@@ -891,15 +891,22 @@ const wrap=document.getElementById('repayment-table');
 wrap.innerHTML='';
 if(show){
 const table=document.createElement('table'), thead=table.createTHead(), tbody=table.createTBody();
-thead.innerHTML='<tr><th>月</th><th>元金</th><th>利息</th><th>支払額</th><th>残高</th></tr>';
+const headers = ['月','金利（％）','元金','利息','支払額','残高']; // ← 金利（％）を追加
+thead.innerHTML = '<tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr>';
+
 for(const row of data){
-const tr=tbody.insertRow();
-for(const k of ['月','元金','利息','支払額','残高']){
-const td=tr.insertCell();
-td.textContent=row[k].toLocaleString();
-td.style.textAlign='right';
+  const tr = tbody.insertRow();
+  for(const k of headers){
+    const td = tr.insertCell();
+    if(k === '金利（％）'){
+      td.textContent = Number(row[k]).toFixed(2); // 小数点2桁で表示
+    }else{
+      td.textContent = row[k].toLocaleString();
+    }
+    td.style.textAlign='right';
+  }
 }
-}
+
 wrap.appendChild(table);
 }
 }
