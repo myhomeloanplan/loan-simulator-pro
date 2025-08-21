@@ -822,42 +822,72 @@ plugins:[Chart.registry.getPlugin('dragdata')]
 });
 }
 
-/* ---------------- 返済シミュレーション本体 ---------------- */
+/* ---------------- 返済シミュレーション本体（修正版） ---------------- */
 function simulate(){
-const amount=parseAmount(document.getElementById('amount').value);
-const years=+document.getElementById('years').value, months=years*12;
-const repaymentType=document.querySelector("input[name='repaymentType']:checked").value;
-const rates=[...document.querySelectorAll('.half-rate-input')].map(el=>parseFloat(el.value)/100);
-if(!amount||!years) return alert('借入額と返済期間を入力してください。');
-if(rates.length<Math.ceil(months/6)) return alert('金利の入力が不足しています。');
+  const amount = parseAmount(document.getElementById('amount').value);
+  const years  = +document.getElementById('years').value;
+  const months = years * 12;
+  const repaymentType = document.querySelector("input[name='repaymentType']:checked").value;
 
-let balance=amount; 
-const result=[], payments=[]; 
-let totalP=0,totalI=0;
+  // 半年ごとの入力（％ → 小数）
+  const rates = [...document.querySelectorAll('.half-rate-input')].map(el => parseFloat(el.value)/100);
 
-for(let m=0;m<months;m++){
-const r=(rates[Math.floor(m/6)]||0)/12, remain=months-m;
-let interest=balance*r, principal, out;
-if(repaymentType==='principalAndInterestEqual'){
-out = r>0 ? balance*r*Math.pow(1+r,remain)/(Math.pow(1+r,remain)-1) : balance/remain;
-interest=balance*r; principal=out-interest;
-}else{
-principal=amount/months; interest=balance*r; out=principal+interest;
+  if(!amount || !years){ alert('借入額と返済期間を入力してください。'); return; }
+  if(rates.length < Math.ceil(months/6)){ alert('金利の入力が不足しています。'); return; }
+
+  // Excel/テーブル用：半期金利（％）を小数点2桁で保持
+  const halfRatePctList = rates.map(r => +(r*100).toFixed(2)); // 例: [1.00, 1.00, 1.25, ...]
+
+  let balance = amount;
+  const result = [];
+  const payments = [];
+  let totalP = 0, totalI = 0;
+
+  for(let m=0; m<months; m++){
+    const halfIdx = Math.floor(m/6);
+    const rMonthly = (rates[halfIdx] || 0) / 12;       // 月利（小数）
+    const ratePct  = halfRatePctList[halfIdx] ?? 0;    // 表示用％
+
+    const remain = months - m;
+    let interest = balance * rMonthly, principal, out;
+
+    if(repaymentType === 'principalAndInterestEqual'){
+      out = rMonthly > 0
+        ? balance * rMonthly * Math.pow(1+rMonthly, remain) / (Math.pow(1+rMonthly, remain) - 1)
+        : balance / remain;
+      interest = balance * rMonthly;
+      principal = out - interest;
+    }else{
+      principal = amount / months;
+      interest  = balance * rMonthly;
+      out       = principal + interest;
+    }
+
+    balance -= principal;
+    if (balance < 0) balance = 0;
+
+    totalP += principal;
+    totalI += interest;
+    payments.push(out);
+
+    // ★ その月に適用される半期金利（％）を列として追加
+    result.push({
+      月: m+1,
+      '金利（％）': ratePct,
+      元金: Math.round(principal),
+      利息: Math.round(interest),
+      支払額: Math.round(out),
+      残高: Math.round(balance)
+    });
+  }
+
+  lastSimData = result;
+  lastTotals  = { totalP, totalI, payments };
+
+  displayResult(result, totalP, totalI, payments);
+  drawCharts(result);
 }
-balance-=principal; if(balance<0) balance=0; 
-totalP+=principal; totalI+=interest; 
-payments.push(out);
 
-result.push({ 
-月:m+1, '金利（％）': ratePct, 元金:Math.round(principal), 利息:Math.round(interest), 残高:Math.round(balance), 支払額:Math.round(out)
-});
-}
-
-lastSimData=result; 
-lastTotals = { totalP, totalI, payments };
-displayResult(result,totalP,totalI,payments); 
-drawCharts(result);
-}
 
 /* ---------------- 結果表示（KPI/テーブル） ---------------- */
 function displayResult(data,totalP,totalI,payments){
